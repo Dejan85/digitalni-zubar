@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field, Select } from "@/components/ui/Field";
@@ -75,7 +77,11 @@ export function OrdersList(props: OrdersListProps) {
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.id} className="border-b border-primary/10 last:border-0">
-                    <td className={`${CELL} font-medium text-heading`}>{row.patientName}</td>
+                    <td className={`${CELL} font-medium`}>
+                      <Link href={`/orders/${row.id}`} className="text-heading hover:underline">
+                        {row.patientName}
+                      </Link>
+                    </td>
                     <td className={CELL}>{row.counterpartName}</td>
                     <td className={CELL}>
                       <StatusBadge label={row.statusLabel} tone={row.statusTone} />

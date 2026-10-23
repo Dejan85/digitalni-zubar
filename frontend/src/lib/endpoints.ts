@@ -1,5 +1,16 @@
 import { api } from "./api";
-import type { Company, CompanyType, Connection, ConnectionStatus, Note, Order, OrderStatus, Patient, Service } from "./types";
+import type {
+  Company,
+  CompanyType,
+  Connection,
+  ConnectionStatus,
+  Note,
+  Order,
+  OrderDetail,
+  OrderStatus,
+  Patient,
+  Service,
+} from "./types";
 
 // Endpoint funkcije primaju engleske nazive i same prave telo zahteva sa nazivima koje backend očekuje.
 
@@ -46,6 +57,17 @@ export interface ListOrdersParams {
 export function listOrders({ status, page, pageSize }: ListOrdersParams = {}) {
   return api<{ orders: Order[]; page: number; pageSize: number; total: number }>("/porudzbine", {
     query: { status, page, pageSize },
+  });
+}
+
+export function getOrder(id: string) {
+  return api<{ order: OrderDetail }>(`/porudzbine/${id}`);
+}
+
+export function updateOrderStatus(id: string, status: OrderStatus, deliveryDeadline?: string) {
+  return api<{ order: Order }>(`/porudzbine/${id}/status`, {
+    method: "PATCH",
+    body: { status, rokIsporuke: deliveryDeadline },
   });
 }
 
@@ -117,8 +139,12 @@ export function listServices(technicianId?: string) {
   return api<{ services: Service[] }>("/usluge", { query: { proteticarId: technicianId } });
 }
 
-export function createService(input: ServiceInput) {
-  return api<{ service: Service }>("/usluge", { method: "POST", body: serviceBody(input) });
+// technicianId samo za super admina (u čiji katalog se upisuje usluga); ostali upisuju u svoj katalog
+export function createService(input: ServiceInput, technicianId?: string) {
+  return api<{ service: Service }>("/usluge", {
+    method: "POST",
+    body: { ...serviceBody(input), proteticarId: technicianId },
+  });
 }
 
 export function updateService(id: string, input: ServiceInput) {

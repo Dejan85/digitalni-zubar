@@ -35,7 +35,7 @@ export function AppLayoutContainer({ children }: { children: ReactNode }) {
   return (
     <AppLayout
       companyName={data?.company.name}
-      companyTypeLabel={getCompanyTypeLabel(session.type)}
+      companyTypeLabel={`${getCompanyTypeLabel(session.type)}${session.isSuperAdmin ? " · Super admin" : ""}`}
       navItems={navItems}
       isMenuOpen={isMenuOpen}
       onToggleMenu={() => setIsMenuOpen((open) => !open)}

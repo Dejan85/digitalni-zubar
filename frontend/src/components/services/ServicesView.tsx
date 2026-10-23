@@ -22,6 +22,10 @@ interface ServicesViewProps {
   rows: ServiceRow[];
   // protetičar upravlja katalogom, doktor ga samo pregleda
   canManage: boolean;
+  // super admin upravlja svim katalozima, ali novu uslugu može da doda tek kad izabere laboratoriju
+  canCreate?: boolean;
+  // kolona sa laboratorijom (podrazumevano samo kad ne upravljaš sopstvenim katalogom)
+  showTechnician?: boolean;
   onCreate: () => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -40,12 +44,14 @@ const CELL = "px-4 py-3 text-sm";
 
 export function ServicesView(props: ServicesViewProps) {
   const { rows, canManage, isLoading, errorMessage } = props;
+  const canCreate = props.canCreate ?? canManage;
+  const showTechnician = props.showTechnician ?? !canManage;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-xl font-semibold text-heading">{props.title}</h1>
-        {canManage && (
+        {canCreate && (
           <Button variant="accent" onClick={props.onCreate}>
             Nova usluga
           </Button>
@@ -82,7 +88,7 @@ export function ServicesView(props: ServicesViewProps) {
               <thead>
                 <tr className="border-b border-primary/15">
                   <th className={HEAD}>Usluga</th>
-                  {!canManage && <th className={HEAD}>Laboratorija</th>}
+                  {showTechnician && <th className={HEAD}>Laboratorija</th>}
                   <th className={`${HEAD} text-right`}>Cena</th>
                   {canManage && <th className={HEAD} />}
                 </tr>
@@ -91,7 +97,7 @@ export function ServicesView(props: ServicesViewProps) {
                 {rows.map((row) => (
                   <tr key={row.id} className="border-b border-primary/10 last:border-0">
                     <td className={`${CELL} font-medium text-heading`}>{row.name}</td>
-                    {!canManage && <td className={CELL}>{row.technicianName}</td>}
+                    {showTechnician && <td className={CELL}>{row.technicianName}</td>}
                     <td className={`${CELL} text-right tabular-nums`}>{row.price}</td>
                     {canManage && (
                       <td className={CELL}>

@@ -22,10 +22,11 @@ type ServiceValues = z.infer<typeof serviceSchema>;
 
 interface ServiceFormContainerProps {
   service?: Service; // bez njega = kreiranje
+  technicianId?: string; // samo super admin: laboratorija u čiji katalog se upisuje nova usluga
   onDone: () => void;
 }
 
-export function ServiceFormContainer({ service, onDone }: ServiceFormContainerProps) {
+export function ServiceFormContainer({ service, technicianId, onDone }: ServiceFormContainerProps) {
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -39,7 +40,7 @@ export function ServiceFormContainer({ service, onDone }: ServiceFormContainerPr
   });
 
   const mutation = useMutation({
-    mutationFn: (values: ServiceInput) => (service ? updateService(service.id, values) : createService(values)),
+    mutationFn: (values: ServiceInput) => (service ? updateService(service.id, values) : createService(values, technicianId)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["services"] }),
   });
 

@@ -6,6 +6,8 @@ export interface Session {
   userId: string;
   companyId: string;
   type: CompanyType;
+  // super admin vidi podatke svih firmi (backend to sprovodi; ovde samo za prikaz)
+  isSuperAdmin: boolean;
 }
 
 // localStorage može da baci grešku (privatni prozor, blokirani podaci) — tada se ponašamo kao da tokena nema
@@ -38,9 +40,9 @@ export function decodeToken(token: string): Session | null {
   try {
     const payload = token.split(".")[1];
     const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-    const data = JSON.parse(json) as { korisnikId: string; firmaId: string; tip: CompanyType; exp?: number };
+    const data = JSON.parse(json) as { korisnikId: string; firmaId: string; tip: CompanyType; superAdmin?: boolean; exp?: number };
     if (data.exp && data.exp * 1000 < Date.now()) return null;
-    return { userId: data.korisnikId, companyId: data.firmaId, type: data.tip };
+    return { userId: data.korisnikId, companyId: data.firmaId, type: data.tip, isSuperAdmin: data.superAdmin === true };
   } catch {
     return null;
   }

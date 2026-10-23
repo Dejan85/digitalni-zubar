@@ -17,6 +17,8 @@ export function ServicesContainer() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   const isDoctor = session?.type === "doktor";
+  const isAdmin = session?.isSuperAdmin === true;
+  const seesTechnicians = isDoctor || isAdmin; // ima filter laboratorija i imena laboratorija
   const [technicianFilter, setTechnicianFilter] = useState("");
   // "new" = kreiranje, Service = izmena, null = modal zatvoren
   const [formTarget, setFormTarget] = useState<Service | "new" | null>(null);
@@ -29,11 +31,11 @@ export function ServicesContainer() {
   });
 
   // doktor: nazivi laboratorija i filter dolaze iz aktivnih veza + liste laboratorija
-  const connectionsQuery = useQuery({ queryKey: ["connections"], queryFn: () => listConnections(), enabled: isDoctor });
+  const connectionsQuery = useQuery({ queryKey: ["connections"], queryFn: () => listConnections(), enabled: seesTechnicians });
   const techniciansQuery = useQuery({
     queryKey: ["companies", { type: "proteticar" }],
     queryFn: () => searchCompanies({ type: "proteticar" }),
-    enabled: isDoctor,
+    enabled: seesTechnicians,
   });
 
   const removal = useMutation({
@@ -49,7 +51,9 @@ export function ServicesContainer() {
   const activeTechnicianIds = new Set(
     (connectionsQuery.data?.connections ?? []).filter((c) => c.status === "prihvaceno").map((c) => c.technicianId),
   );
-  const technicianOptions = [...activeTechnicianIds].map((id) => ({ id, name: technicianNames.get(id) ?? "…" }));
+  // super admin bira među svim laboratorijama, ne samo među povezanim
+  const technicianIds = isAdmin ? [...technicianNames.keys()] : [...activeTechnicianIds];
+  const technicianOptions = technicianIds.map((id) => ({ id, name: technicianNames.get(id) ?? "…" }));
 
   const rows: ServiceRow[] = services.map((s) => ({
     id: s.id,
@@ -63,14 +67,16 @@ export function ServicesContainer() {
     <ServicesView
       title={isDoctor ? "Katalog usluga" : "Moje usluge"}
       rows={rows}
-      canManage={!isDoctor}
+      canManage={!isDoctor || isAdmin}
+      canCreate={isAdmin ? !!technicianFilter : !isDoctor}
+      showTechnician={seesTechnicians}
       onCreate={() => setFormTarget("new")}
       onEdit={(id) => setFormTarget(findService(id))}
       onDelete={(id) => {
         removal.reset();
         setDeleteTarget(findService(id));
       }}
-      technicianOptions={isDoctor ? technicianOptions : undefined}
+      technicianOptions={seesTechnicians ? technicianOptions : undefined}
       technicianFilter={technicianFilter}
       onTechnicianFilterChange={setTechnicianFilter}
       isLoading={servicesQuery.isPending}
@@ -78,7 +84,11 @@ export function ServicesContainer() {
     >
       {formTarget && (
         <Modal title={formTarget === "new" ? "Nova usluga" : "Izmena usluge"} onClose={() => setFormTarget(null)}>
-          <ServiceFormContainer service={formTarget === "new" ? undefined : formTarget} onDone={() => setFormTarget(null)} />
+          <ServiceFormContainer
+            service={formTarget === "new" ? undefined : formTarget}
+            technicianId={isAdmin ? technicianFilter : undefined}
+            onDone={() => setFormTarget(null)}
+          />
         </Modal>
       )}
       {deleteTarget && (
