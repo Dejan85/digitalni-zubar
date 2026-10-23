@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { ThemePicker } from "@/components/dev/ThemePicker";
 
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
+
 import { Providers } from "./providers";
 
 import "./globals.css";
@@ -24,7 +26,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="sr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="sr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
         {/* color picker teme postoji samo u devu, ne ide u produkcijski build */}

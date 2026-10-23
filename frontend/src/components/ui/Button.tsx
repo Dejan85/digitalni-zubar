@@ -6,7 +6,7 @@ const VARIANTS: Record<Variant, string> = {
   primary: "bg-primary text-white hover:bg-primary-hover",
   // glavna akcija (CTA): svetla lime sa tamnim tekstom zbog kontrasta
   accent: "bg-accent text-primary-dark hover:bg-accent-hover",
-  outline: "border border-primary/30 bg-transparent text-primary-dark hover:bg-primary-soft",
+  outline: "border border-primary/30 bg-transparent text-heading hover:bg-primary-soft",
   dark: "bg-primary-dark text-white hover:opacity-90",
 };
 

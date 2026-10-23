@@ -19,7 +19,7 @@ interface RegisterFormProps {
 export function RegisterForm({ fields, errors, formError, isSubmitting, onSubmit }: RegisterFormProps) {
   return (
     <Card>
-      <h2 className="mb-4 text-lg font-semibold text-primary-dark">Registracija firme</h2>
+      <h2 className="mb-4 text-lg font-semibold text-heading">Registracija firme</h2>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <Field label="Naziv firme" htmlFor="companyName" error={errors.companyName?.message}>
           <Input id="companyName" aria-invalid={!!errors.companyName} {...fields.companyName} />

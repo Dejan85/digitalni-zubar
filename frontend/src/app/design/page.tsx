@@ -18,7 +18,7 @@ export default function DesignPage() {
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-6 py-12">
       <section className="rounded-card bg-surface-tint p-8">
-        <h1 className="text-3xl font-semibold tracking-tight text-primary-dark">Digitalni zubar</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-heading">Digitalni zubar</h1>
         <p className="mt-2 max-w-xl text-muted">
           Porudžbine, otisci i praćenje statusa između ordinacije i zubotehničke laboratorije.
         </p>
@@ -47,7 +47,7 @@ export default function DesignPage() {
           {STATUSES.map((status, i) => (
             <span
               key={status}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium ${i < 3 ? "bg-primary text-white" : "bg-primary-soft text-primary-dark"}`}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium ${i < 3 ? "bg-primary text-white" : "bg-primary-soft text-heading"}`}
             >
               {status}
             </span>

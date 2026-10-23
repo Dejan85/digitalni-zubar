@@ -16,6 +16,23 @@
   --card: #ffffff;
   --muted: #5b6b62;
   --danger: #dc2626; /* greške u formama i destruktivne akcije */
+  --heading: var(--primary-dark); /* boja naslova/labela na površinama stranice (u dark temi svetla) */
+}
+
+/* dark tema: data-theme="dark" na <html> postavlja skripta u layout.tsx (sistemska tema ili izbor korisnika) */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --primary: #22c55e;
+  --primary-dark: #1f3a2e; /* sidebar i tamne kartice ostaju tamne, ali svetlije od pozadine */
+  --surface-tint: #13201a;
+  --accent: #86efac;
+
+  --background: #0d1411;
+  --foreground: #e6efe9;
+  --card: #16211b;
+  --muted: #9aada2;
+  --danger: #f87171;
+  --heading: #bbf7d0;
 }
 
 @theme inline {
@@ -24,7 +41,8 @@
   --color-surface-tint: var(--surface-tint);
   --color-accent: var(--accent);
   /* izvedene nijanse iz primarne — jedna boja u pickeru daje celu skalu */
-  --color-primary-soft: color-mix(in oklab, var(--primary) 12%, white);
+  --color-primary-soft: color-mix(in oklab, var(--primary) 12%, var(--card));
+  --color-heading: var(--heading);
   --color-primary-hover: color-mix(in oklab, var(--primary) 85%, black);
   --color-accent-hover: color-mix(in oklab, var(--accent) 85%, black);
 

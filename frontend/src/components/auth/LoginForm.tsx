@@ -18,8 +18,8 @@ interface LoginFormProps {
 export function LoginForm({ fields, errors, formError, notice, isSubmitting, onSubmit }: LoginFormProps) {
   return (
     <Card>
-      <h2 className="mb-4 text-lg font-semibold text-primary-dark">Prijava</h2>
-      {notice && <p className="mb-4 rounded-xl bg-primary-soft px-4 py-3 text-sm text-primary-dark">{notice}</p>}
+      <h2 className="mb-4 text-lg font-semibold text-heading">Prijava</h2>
+      {notice && <p className="mb-4 rounded-xl bg-primary-soft px-4 py-3 text-sm text-heading">{notice}</p>}
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <Field label="Email" htmlFor="email" error={errors.email?.message}>
           <Input id="email" type="email" autoComplete="email" aria-invalid={!!errors.email} {...fields.email} />
