@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { Company, CompanyType, Connection, ConnectionStatus, Note, Order, OrderStatus, Patient } from "./types";
+import type { Company, CompanyType, Connection, ConnectionStatus, Note, Order, OrderStatus, Patient, Service } from "./types";
 
 // Endpoint funkcije primaju engleske nazive i same prave telo zahteva sa nazivima koje backend očekuje.
 
@@ -104,6 +104,29 @@ export function updatePatient(id: string, input: PatientInput) {
 
 export function deletePatient(id: string) {
   return api<void>(`/pacijenti/${id}`, { method: "DELETE" });
+}
+
+export interface ServiceInput {
+  name: string;
+  price: number;
+}
+
+const serviceBody = (s: ServiceInput) => ({ naziv: s.name, cena: s.price });
+
+export function listServices(technicianId?: string) {
+  return api<{ services: Service[] }>("/usluge", { query: { proteticarId: technicianId } });
+}
+
+export function createService(input: ServiceInput) {
+  return api<{ service: Service }>("/usluge", { method: "POST", body: serviceBody(input) });
+}
+
+export function updateService(id: string, input: ServiceInput) {
+  return api<{ service: Service }>(`/usluge/${id}`, { method: "PATCH", body: serviceBody(input) });
+}
+
+export function deleteService(id: string) {
+  return api<void>(`/usluge/${id}`, { method: "DELETE" });
 }
 
 export function listNotes(filter: { orderId?: string; patientId?: string }) {
