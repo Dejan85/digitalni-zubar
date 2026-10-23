@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { Company, CompanyType } from "./types";
+import type { Company, CompanyType, Order, OrderStatus } from "./types";
 
 // Endpoint funkcije primaju engleske nazive i same prave telo zahteva sa nazivima koje backend očekuje.
 
@@ -35,4 +35,16 @@ export function register({ company, user }: RegisterInput) {
 
 export function getMyCompany() {
   return api<{ company: Company }>("/firme/me");
+}
+
+export interface ListOrdersParams {
+  status?: OrderStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+export function listOrders({ status, page, pageSize }: ListOrdersParams = {}) {
+  return api<{ orders: Order[]; page: number; pageSize: number; total: number }>("/porudzbine", {
+    query: { status, page, pageSize },
+  });
 }
