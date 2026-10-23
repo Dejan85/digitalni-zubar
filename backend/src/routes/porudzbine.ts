@@ -98,26 +98,31 @@ porudzbineRouter.post("/", requireTip("doktor"), async (req: Request, res: Respo
   }
 
   const { proteticarId, pacijentId, stavke } = parsed.data;
-  const doktorId = req.auth!.firmaId;
+  const vidiSve = req.auth!.superAdmin;
 
-  // porudzbina je moguca samo ako doktor i protetičar imaju prihvacenu vezu (isti uslov kao katalog usluga)
-  const vezaRezultat = await pool.query(
-    `SELECT 1 FROM veze_doktor_proteticar WHERE doktor_id = $1 AND proteticar_id = $2 AND status = 'prihvaceno'`,
-    [doktorId, proteticarId],
+  // pacijent mora pripadati ovom doktoru — ista provera kao u pacijenti.ts (super admin: bilo koji pacijent,
+  // a porudzbina se otvara u ime doktora tog pacijenta)
+  const pacijentRezultat = await pool.query<{ doktor_id: string }>(
+    "SELECT doktor_id FROM pacijenti WHERE id = $1 AND ($3::boolean OR doktor_id = $2)",
+    [pacijentId, req.auth!.firmaId, vidiSve],
   );
-  if (vezaRezultat.rowCount === 0) {
-    res.status(400).json({ error: "Porudzbina je moguca samo sa protetičarom sa kojim imate prihvacenu vezu" });
-    return;
-  }
-
-  // pacijent mora pripadati ovom doktoru — ista provera kao u pacijenti.ts
-  const pacijentRezultat = await pool.query("SELECT 1 FROM pacijenti WHERE id = $1 AND doktor_id = $2", [
-    pacijentId,
-    doktorId,
-  ]);
   if (pacijentRezultat.rowCount === 0) {
     res.status(400).json({ error: "Pacijent nije pronadjen" });
     return;
+  }
+  const doktorId = pacijentRezultat.rows[0].doktor_id;
+
+  // porudzbina je moguca samo ako doktor i protetičar imaju prihvacenu vezu (isti uslov kao katalog usluga);
+  // super admin zaobilazi ovu proveru
+  if (!vidiSve) {
+    const vezaRezultat = await pool.query(
+      `SELECT 1 FROM veze_doktor_proteticar WHERE doktor_id = $1 AND proteticar_id = $2 AND status = 'prihvaceno'`,
+      [doktorId, proteticarId],
+    );
+    if (vezaRezultat.rowCount === 0) {
+      res.status(400).json({ error: "Porudzbina je moguca samo sa protetičarom sa kojim imate prihvacenu vezu" });
+      return;
+    }
   }
 
   // cena za stavke iz kataloga se uzima iz baze u trenutku narucivanja, nikad od klijenta —
@@ -221,7 +226,7 @@ porudzbineRouter.get("/", async (req: Request, res: Response) => {
      JOIN pacijenti pac ON pac.id = p.pacijent_id
      JOIN firme d ON d.id = p.doktor_id
      JOIN firme pr ON pr.id = p.proteticar_id
-     WHERE (p.doktor_id = $1 OR p.proteticar_id = $1)
+     WHERE ($7::boolean OR p.doktor_id = $1 OR p.proteticar_id = $1)
        AND ($2::text IS NULL OR p.status = $2)
        AND ($3::uuid IS NULL OR p.doktor_id = $3)
        AND ($4::uuid IS NULL OR p.proteticar_id = $4)
@@ -234,6 +239,7 @@ porudzbineRouter.get("/", async (req: Request, res: Response) => {
       proteticarId ?? null,
       velicinaStrane,
       (brojStrane - 1) * velicinaStrane,
+      req.auth!.superAdmin, // super admin vidi porudzbine svih firmi
     ],
   );
 
@@ -261,8 +267,8 @@ porudzbineRouter.get("/:id", async (req: Request, res: Response) => {
      JOIN pacijenti pac ON pac.id = p.pacijent_id
      JOIN firme d ON d.id = p.doktor_id
      JOIN firme pr ON pr.id = p.proteticar_id
-     WHERE p.id = $1 AND (p.doktor_id = $2 OR p.proteticar_id = $2)`,
-    [req.params.id, mojaFirmaId],
+     WHERE p.id = $1 AND ($3::boolean OR p.doktor_id = $2 OR p.proteticar_id = $2)`,
+    [req.params.id, mojaFirmaId, req.auth!.superAdmin],
   );
 
   const porudzbina = rezultat.rows[0];
@@ -311,18 +317,21 @@ porudzbineRouter.patch("/:id/status", async (req: Request, res: Response) => {
   );
   const postojeca = postojecaRezultat.rows[0];
 
-  if (!postojeca || (postojeca.doktor_id !== mojaFirmaId && postojeca.proteticar_id !== mojaFirmaId)) {
+  const vidiSve = req.auth!.superAdmin;
+
+  if (!postojeca || (!vidiSve && postojeca.doktor_id !== mojaFirmaId && postojeca.proteticar_id !== mojaFirmaId)) {
     // ista poruka za "ne postoji" i "nije moja porudzbina" — ne otkrivamo tudje id-jeve
     res.status(404).json({ error: "Porudzbina nije pronadjena" });
     return;
   }
 
-  if (!DOZVOLJENE_TRANZICIJE[postojeca.status].includes(noviStatus)) {
+  // super admin moze da postavi bilo koji status (popravka podataka), mimo redosleda i tipa firme
+  if (!vidiSve && !DOZVOLJENE_TRANZICIJE[postojeca.status].includes(noviStatus)) {
     res.status(409).json({ error: `Prelaz iz statusa '${postojeca.status}' u '${noviStatus}' nije dozvoljen` });
     return;
   }
 
-  if (TIP_KOJI_POSTAVLJA_STATUS[noviStatus] !== mojTip) {
+  if (!vidiSve && TIP_KOJI_POSTAVLJA_STATUS[noviStatus] !== mojTip) {
     res.status(403).json({ error: "Nemate dozvolu da postavite ovaj status" });
     return;
   }
@@ -364,8 +373,8 @@ porudzbineRouter.post("/:id/otisak", uploadOtisak, async (req: Request, res: Res
   const mojaFirmaId = req.auth!.firmaId;
 
   const postojecaRezultat = await pool.query(
-    `SELECT 1 FROM porudzbine WHERE id = $1 AND (doktor_id = $2 OR proteticar_id = $2)`,
-    [req.params.id, mojaFirmaId],
+    `SELECT 1 FROM porudzbine WHERE id = $1 AND ($3::boolean OR doktor_id = $2 OR proteticar_id = $2)`,
+    [req.params.id, mojaFirmaId, req.auth!.superAdmin],
   );
   if (postojecaRezultat.rowCount === 0) {
     if (req.file) await fs.promises.unlink(req.file.path).catch(() => {});

@@ -30,11 +30,15 @@ pacijentiRouter.post("/", async (req: Request, res: Response) => {
 
   const { ime, prezime, datumRodjenja, pol } = parsed.data;
 
+  // super admin moze da upise pacijenta za bilo kog doktora (opciono polje doktorId); inace je to uvek moja firma
+  const body = req.body as { doktorId?: unknown };
+  const doktorId = req.auth!.superAdmin && typeof body.doktorId === "string" ? body.doktorId : req.auth!.firmaId;
+
   const rezultat = await pool.query<PacijentRed>(
     `INSERT INTO pacijenti (doktor_id, ime, prezime, datum_rodjenja, pol)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING id, doktor_id, ime, prezime, datum_rodjenja, pol, created_at, updated_at`,
-    [req.auth!.firmaId, ime, prezime, datumRodjenja, pol],
+    [doktorId, ime, prezime, datumRodjenja, pol],
   );
 
   res.status(201).json({ pacijent: rezultat.rows[0] });
@@ -48,15 +52,15 @@ pacijentiRouter.get("/", async (req: Request, res: Response) => {
     return;
   }
 
-  // scoped na doktor_id ulogovanog korisnika — doktor ne vidi pacijente drugih doktora
+  // scoped na doktor_id ulogovanog korisnika — doktor ne vidi pacijente drugih doktora (super admin vidi sve)
   // ILIKE '%q%' na ime i prezime — case-insensitive pretraga po delu imena ili prezimena
   const rezultat = await pool.query<PacijentRed>(
     `SELECT id, doktor_id, ime, prezime, datum_rodjenja, pol, created_at, updated_at
      FROM pacijenti
-     WHERE doktor_id = $1
+     WHERE ($3::boolean OR doktor_id = $1)
        AND ($2::text IS NULL OR ime ILIKE '%' || $2 || '%' OR prezime ILIKE '%' || $2 || '%')
      ORDER BY prezime, ime`,
-    [req.auth!.firmaId, q ?? null],
+    [req.auth!.firmaId, q ?? null, req.auth!.superAdmin],
   );
 
   res.status(200).json({ pacijenti: rezultat.rows });
@@ -66,8 +70,8 @@ pacijentiRouter.get("/:id", async (req: Request, res: Response) => {
   const rezultat = await pool.query<PacijentRed>(
     `SELECT id, doktor_id, ime, prezime, datum_rodjenja, pol, created_at, updated_at
      FROM pacijenti
-     WHERE id = $1 AND doktor_id = $2`,
-    [req.params.id, req.auth!.firmaId],
+     WHERE id = $1 AND ($3::boolean OR doktor_id = $2)`,
+    [req.params.id, req.auth!.firmaId, req.auth!.superAdmin],
   );
 
   const pacijent = rezultat.rows[0];
@@ -102,9 +106,17 @@ pacijentiRouter.patch("/:id", async (req: Request, res: Response) => {
          datum_rodjenja = COALESCE($3, datum_rodjenja),
          pol = COALESCE($4, pol),
          updated_at = now()
-     WHERE id = $5 AND doktor_id = $6
+     WHERE id = $5 AND ($7::boolean OR doktor_id = $6)
      RETURNING id, doktor_id, ime, prezime, datum_rodjenja, pol, created_at, updated_at`,
-    [ime ?? null, prezime ?? null, datumRodjenja ?? null, pol ?? null, req.params.id, req.auth!.firmaId],
+    [
+      ime ?? null,
+      prezime ?? null,
+      datumRodjenja ?? null,
+      pol ?? null,
+      req.params.id,
+      req.auth!.firmaId,
+      req.auth!.superAdmin,
+    ],
   );
 
   const pacijent = rezultat.rows[0];
@@ -117,10 +129,10 @@ pacijentiRouter.patch("/:id", async (req: Request, res: Response) => {
 });
 
 pacijentiRouter.delete("/:id", async (req: Request, res: Response) => {
-  const rezultat = await pool.query("DELETE FROM pacijenti WHERE id = $1 AND doktor_id = $2 RETURNING id", [
-    req.params.id,
-    req.auth!.firmaId,
-  ]);
+  const rezultat = await pool.query(
+    "DELETE FROM pacijenti WHERE id = $1 AND ($3::boolean OR doktor_id = $2) RETURNING id",
+    [req.params.id, req.auth!.firmaId, req.auth!.superAdmin],
+  );
 
   if (rezultat.rowCount === 0) {
     res.status(404).json({ error: "Pacijent nije pronadjen" });

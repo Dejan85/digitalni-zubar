@@ -83,15 +83,16 @@ firmeRouter.get("/", async (req: Request, res: Response) => {
   }
 
   // sopstvenu firmu ne prikazujemo u listingu — doktor trazi proteticare (i obrnuto), ne sebe
+  // (super admin vidi sve firme, ukljucujuci svoju, da bi mogao da razresi imena u pregledima)
   // ILIKE '%naziv%' — case-insensitive pretraga po delu naziva firme
   const rezultat = await pool.query(
     `SELECT id, naziv, tip, adresa, telefon, email
      FROM firme
      WHERE ($1::text IS NULL OR tip = $1)
        AND ($2::text IS NULL OR naziv ILIKE '%' || $2 || '%')
-       AND id != $3
+       AND ($4::boolean OR id != $3)
      ORDER BY naziv`,
-    [tip ?? null, naziv ?? null, req.auth!.firmaId],
+    [tip ?? null, naziv ?? null, req.auth!.firmaId, req.auth!.superAdmin],
   );
 
   res.status(200).json({ firme: rezultat.rows as FirmaRed[] });

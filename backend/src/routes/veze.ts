@@ -99,19 +99,21 @@ vezeRouter.patch("/:id", async (req: Request, res: Response) => {
   );
   const postojeca = postojecaRezultat.rows[0];
 
-  if (!postojeca || (postojeca.doktor_id !== mojaFirmaId && postojeca.proteticar_id !== mojaFirmaId)) {
+  const vidiSve = req.auth!.superAdmin;
+
+  if (!postojeca || (!vidiSve && postojeca.doktor_id !== mojaFirmaId && postojeca.proteticar_id !== mojaFirmaId)) {
     // ista poruka za "ne postoji" i "nije moja veza" — ne otkrivamo tudje id-jeve
     res.status(404).json({ error: "Veza nije pronadjena" });
     return;
   }
 
   // samo primalac (strana koja NIJE poslala zahtev) sme da prihvati/odbije
-  if (postojeca.posiljalac_id === mojaFirmaId) {
+  if (!vidiSve && postojeca.posiljalac_id === mojaFirmaId) {
     res.status(403).json({ error: "Ne mozete odgovoriti na sopstveni zahtev za konekciju" });
     return;
   }
 
-  if (postojeca.status !== "na_cekanju") {
+  if (!vidiSve && postojeca.status !== "na_cekanju") {
     res.status(409).json({ error: "Na ovaj zahtev je vec odgovoreno" });
     return;
   }
@@ -145,7 +147,7 @@ vezeRouter.get("/", async (req: Request, res: Response) => {
   const rezultat = await pool.query<VezaRed>(
     `SELECT id, doktor_id, proteticar_id, posiljalac_id, status, created_at, updated_at
      FROM veze_doktor_proteticar
-     WHERE (doktor_id = $1 OR proteticar_id = $1)
+     WHERE ($4::boolean OR doktor_id = $1 OR proteticar_id = $1)
        AND ($2::text IS NULL OR status = $2)
        AND (
          $3::text IS NULL
@@ -153,7 +155,7 @@ vezeRouter.get("/", async (req: Request, res: Response) => {
          OR ($3 = 'primljene' AND posiljalac_id != $1)
        )
      ORDER BY created_at DESC`,
-    [mojaFirmaId, status ?? null, smer ?? null],
+    [mojaFirmaId, status ?? null, smer ?? null, req.auth!.superAdmin], // super admin vidi veze svih firmi
   );
 
   res.status(200).json({ veze: rezultat.rows });

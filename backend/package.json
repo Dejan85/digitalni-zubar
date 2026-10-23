@@ -11,6 +11,7 @@
     "migrate:down": "node-pg-migrate down",
     "migrate:create": "node-pg-migrate create -j ts",
     "seed": "tsx src/db/seed.ts",
+    "make-admin": "tsx src/db/makeSuperAdmin.ts",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest run",
     "test:watch": "vitest",

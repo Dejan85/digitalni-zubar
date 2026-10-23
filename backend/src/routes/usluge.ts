@@ -29,11 +29,19 @@ uslugeRouter.post("/", requireTip("proteticar"), async (req: Request, res: Respo
 
   const { naziv, cena } = parsed.data;
 
+  // super admin upisuje uslugu u katalog izabranog protetičara (obavezno polje proteticarId); inace moj katalog
+  const body = req.body as { proteticarId?: unknown };
+  if (req.auth!.superAdmin && typeof body.proteticarId !== "string") {
+    res.status(400).json({ error: "proteticarId je obavezan za super admina" });
+    return;
+  }
+  const proteticarId = req.auth!.superAdmin ? (body.proteticarId as string) : req.auth!.firmaId;
+
   const rezultat = await pool.query<UslugaRed>(
     `INSERT INTO usluge (proteticar_id, naziv, cena)
      VALUES ($1, $2, $3)
      RETURNING id, proteticar_id, naziv, cena, created_at, updated_at`,
-    [req.auth!.firmaId, naziv, cena],
+    [proteticarId, naziv, cena],
   );
 
   res.status(201).json({ usluga: rezultat.rows[0] });
@@ -41,6 +49,26 @@ uslugeRouter.post("/", requireTip("proteticar"), async (req: Request, res: Respo
 
 uslugeRouter.get("/", async (req: Request, res: Response) => {
   const mojaFirmaId = req.auth!.firmaId;
+
+  if (req.auth!.superAdmin) {
+    // super admin vidi kataloge svih protetičara, opciono suzeno na jednog
+    const { proteticarId } = req.query;
+    if (proteticarId !== undefined && typeof proteticarId !== "string") {
+      res.status(400).json({ error: "proteticarId mora biti string" });
+      return;
+    }
+
+    const rezultat = await pool.query<UslugaRed>(
+      `SELECT id, proteticar_id, naziv, cena, created_at, updated_at
+       FROM usluge
+       WHERE ($1::uuid IS NULL OR proteticar_id = $1)
+       ORDER BY naziv`,
+      [proteticarId ?? null],
+    );
+
+    res.status(200).json({ usluge: rezultat.rows });
+    return;
+  }
 
   if (req.auth!.tip === "proteticar") {
     // protetičar vidi sopstveni katalog
@@ -97,9 +125,9 @@ uslugeRouter.patch("/:id", requireTip("proteticar"), async (req: Request, res: R
      SET naziv = COALESCE($1, naziv),
          cena = COALESCE($2, cena),
          updated_at = now()
-     WHERE id = $3 AND proteticar_id = $4
+     WHERE id = $3 AND ($5::boolean OR proteticar_id = $4)
      RETURNING id, proteticar_id, naziv, cena, created_at, updated_at`,
-    [naziv ?? null, cena ?? null, req.params.id, req.auth!.firmaId],
+    [naziv ?? null, cena ?? null, req.params.id, req.auth!.firmaId, req.auth!.superAdmin],
   );
 
   const usluga = rezultat.rows[0];
@@ -113,10 +141,10 @@ uslugeRouter.patch("/:id", requireTip("proteticar"), async (req: Request, res: R
 });
 
 uslugeRouter.delete("/:id", requireTip("proteticar"), async (req: Request, res: Response) => {
-  const rezultat = await pool.query("DELETE FROM usluge WHERE id = $1 AND proteticar_id = $2 RETURNING id", [
-    req.params.id,
-    req.auth!.firmaId,
-  ]);
+  const rezultat = await pool.query(
+    "DELETE FROM usluge WHERE id = $1 AND ($3::boolean OR proteticar_id = $2) RETURNING id",
+    [req.params.id, req.auth!.firmaId, req.auth!.superAdmin],
+  );
 
   if (rezultat.rowCount === 0) {
     res.status(404).json({ error: "Usluga nije pronadjena" });

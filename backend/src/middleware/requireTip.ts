@@ -11,6 +11,12 @@ export function requireTip(...dozvoljeniTipovi: TipFirme[]) {
       return;
     }
 
+    // super admin prolazi svaku rutu bez obzira na tip firme (vlasnik aplikacije, nalog se ne koristi u produkciji)
+    if (req.auth.superAdmin) {
+      next();
+      return;
+    }
+
     if (!dozvoljeniTipovi.includes(req.auth.tip)) {
       res.status(403).json({ error: "Nemate dozvolu za ovu akciju" });
       return;

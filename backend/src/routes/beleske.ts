@@ -26,19 +26,19 @@ const PRAG_DANA_DO_ROKA = 2;
 // "provera pri citanju" umesto cron job-a: najjednostavnije za MVP, bez dodatne infrastrukture (worker/scheduler).
 // Nedostatak: alarm se pojavi tek kad neko sledeci put ucita listu, ne odmah kad rok postane blizak — prihvatljivo za sada.
 // NOT EXISTS sprecava duplikate: po porudzbini se generise najvise jedna automatska beleska, ne jedna po svakom citanju.
-async function generisiAutomatskeAlarme(firmaId: string): Promise<void> {
+async function generisiAutomatskeAlarme(firmaId: string, vidiSve: boolean): Promise<void> {
   await pool.query(
     `INSERT INTO beleske (porudzbina_id, tip, tekst)
      SELECT p.id, 'automatska', 'Rok isporuke (' || to_char(p.rok_isporuke, 'DD.MM.YYYY') || ') se priblizava'
      FROM porudzbine p
-     WHERE (p.doktor_id = $1 OR p.proteticar_id = $1)
+     WHERE ($3::boolean OR p.doktor_id = $1 OR p.proteticar_id = $1)
        AND p.rok_isporuke IS NOT NULL
        AND p.rok_isporuke <= (now() + $2 * interval '1 day')
        AND p.status NOT IN ('isporucena', 'otkazana', 'odbijena')
        AND NOT EXISTS (
          SELECT 1 FROM beleske b WHERE b.porudzbina_id = p.id AND b.tip = 'automatska'
        )`,
-    [firmaId, PRAG_DANA_DO_ROKA],
+    [firmaId, PRAG_DANA_DO_ROKA, vidiSve],
   );
 }
 
@@ -54,8 +54,8 @@ beleskeRouter.post("/", async (req: Request, res: Response) => {
 
   if (porudzbinaId) {
     const porudzbinaRezultat = await pool.query<{ pacijent_id: string }>(
-      `SELECT pacijent_id FROM porudzbine WHERE id = $1 AND (doktor_id = $2 OR proteticar_id = $2)`,
-      [porudzbinaId, mojaFirmaId],
+      `SELECT pacijent_id FROM porudzbine WHERE id = $1 AND ($3::boolean OR doktor_id = $2 OR proteticar_id = $2)`,
+      [porudzbinaId, mojaFirmaId, req.auth!.superAdmin],
     );
     const porudzbina = porudzbinaRezultat.rows[0];
     if (!porudzbina) {
@@ -70,10 +70,10 @@ beleskeRouter.post("/", async (req: Request, res: Response) => {
     }
   } else if (pacijentId) {
     // bez porudzbinaId, beleska vezana samo za pacijenta sme da je unese jedino doktor koji ga vodi
-    const pacijentRezultat = await pool.query("SELECT 1 FROM pacijenti WHERE id = $1 AND doktor_id = $2", [
-      pacijentId,
-      mojaFirmaId,
-    ]);
+    const pacijentRezultat = await pool.query(
+      "SELECT 1 FROM pacijenti WHERE id = $1 AND ($3::boolean OR doktor_id = $2)",
+      [pacijentId, mojaFirmaId, req.auth!.superAdmin],
+    );
     if (pacijentRezultat.rowCount === 0) {
       res.status(404).json({ error: "Pacijent nije pronadjen" });
       return;
@@ -107,10 +107,13 @@ beleskeRouter.get("/", async (req: Request, res: Response) => {
     return;
   }
 
+  // super admin cita beleske svih firmi (samo GET); POST ostaje vezan za sopstvenu firmu
+  const vidiSve = req.auth!.superAdmin;
+
   if (porudzbinaId) {
     const porudzbinaRezultat = await pool.query(
-      `SELECT 1 FROM porudzbine WHERE id = $1 AND (doktor_id = $2 OR proteticar_id = $2)`,
-      [porudzbinaId, mojaFirmaId],
+      `SELECT 1 FROM porudzbine WHERE id = $1 AND ($3::boolean OR doktor_id = $2 OR proteticar_id = $2)`,
+      [porudzbinaId, mojaFirmaId, vidiSve],
     );
     if (porudzbinaRezultat.rowCount === 0) {
       res.status(404).json({ error: "Porudzbina nije pronadjena" });
@@ -118,10 +121,10 @@ beleskeRouter.get("/", async (req: Request, res: Response) => {
     }
   }
   if (pacijentId) {
-    const pacijentRezultat = await pool.query("SELECT 1 FROM pacijenti WHERE id = $1 AND doktor_id = $2", [
-      pacijentId,
-      mojaFirmaId,
-    ]);
+    const pacijentRezultat = await pool.query(
+      "SELECT 1 FROM pacijenti WHERE id = $1 AND ($3::boolean OR doktor_id = $2)",
+      [pacijentId, mojaFirmaId, vidiSve],
+    );
     if (pacijentRezultat.rowCount === 0) {
       res.status(404).json({ error: "Pacijent nije pronadjen" });
       return;
@@ -129,7 +132,7 @@ beleskeRouter.get("/", async (req: Request, res: Response) => {
   }
 
   // generisi alarme pre citanja liste, tako da tek nastali automatski zapisi budu odmah vidljivi u istom odgovoru
-  await generisiAutomatskeAlarme(mojaFirmaId);
+  await generisiAutomatskeAlarme(mojaFirmaId, vidiSve);
 
   const rezultat = await pool.query<BeleskaRed>(
     `SELECT id, porudzbina_id, pacijent_id, tip, datum, tekst, created_at

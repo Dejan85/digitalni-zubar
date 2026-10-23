@@ -62,6 +62,7 @@ authRouter.post("/register", async (req: Request, res: Response) => {
       korisnikId: noviKorisnik.id,
       firmaId: noviFirma.id,
       tip: noviFirma.tip,
+      superAdmin: false, // nova registracija nikad nije super admin; flag se postavlja van API-ja
     });
 
     res.status(201).json({
@@ -87,7 +88,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
   const { email, lozinka } = parsed.data;
 
   const rezultat = await pool.query(
-    `SELECT k.id, k.password_hash, f.id AS firma_id, f.tip
+    `SELECT k.id, k.password_hash, k.is_super_admin, f.id AS firma_id, f.tip
      FROM korisnici k
      JOIN firme f ON f.id = k.firma_id
      WHERE k.email = $1`,
@@ -95,7 +96,8 @@ authRouter.post("/login", async (req: Request, res: Response) => {
   );
 
   const red = rezultat.rows[0] as
-    { id: string; password_hash: string; firma_id: string; tip: "doktor" | "proteticar" } | undefined;
+    | { id: string; password_hash: string; is_super_admin: boolean; firma_id: string; tip: "doktor" | "proteticar" }
+    | undefined;
 
   // ista poruka za "nema tog email-a" i "pogresna lozinka" — ne otkrivamo napadacu koji email postoji
   if (!red) {
@@ -113,6 +115,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
     korisnikId: red.id,
     firmaId: red.firma_id,
     tip: red.tip,
+    superAdmin: red.is_super_admin,
   });
 
   res.status(200).json({ token });

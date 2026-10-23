@@ -8,6 +8,8 @@ export interface AuthTokenPayload {
   korisnikId: string;
   firmaId: string;
   tip: TipFirme;
+  // super admin cita podatke svih firmi (samo GET rute); izmene ostaju vezane za sopstvenu firmu
+  superAdmin: boolean;
 }
 
 // fail-fast na startu servera je bolji od tihog potpisivanja tokena praznim kljucem;
