@@ -19,6 +19,7 @@ export interface OrderRow {
 
 interface OrdersListProps {
   rows: OrderRow[];
+  canCreate: boolean;
   counterpartHeader: string;
   statusOptions: { value: string; label: string }[];
   statusFilter: string;
@@ -38,7 +39,17 @@ export function OrdersList(props: OrdersListProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-heading">Porudžbine</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-xl font-semibold text-heading">Porudžbine</h1>
+        {props.canCreate && (
+          <Link
+            href="/orders/new"
+            className="inline-flex h-11 items-center rounded-full bg-accent px-6 text-sm font-medium text-primary-dark transition-colors hover:bg-accent-hover"
+          >
+            Nova porudžbina
+          </Link>
+        )}
+      </div>
       <Card>
         <div className="mb-4 max-w-xs">
           <Field label="Status" htmlFor="status-filter">
@@ -60,7 +71,14 @@ export function OrdersList(props: OrdersListProps) {
         {errorMessage && <p className="text-danger">{errorMessage}</p>}
         {isLoading && <p className="text-muted">Učitavanje...</p>}
         {!isLoading && !errorMessage && rows.length === 0 && (
-          <EmptyState title="Nema porudžbina" description="Nijedna porudžbina ne odgovara izabranom filteru." />
+          <EmptyState
+            title="Nema porudžbina"
+            description={
+              props.statusFilter
+                ? "Nijedna porudžbina ne odgovara izabranom filteru."
+                : "Još nema porudžbina."
+            }
+          />
         )}
         {rows.length > 0 && (
           <div className="overflow-x-auto">

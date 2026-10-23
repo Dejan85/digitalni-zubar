@@ -39,6 +39,7 @@ export function OrdersContainer() {
   return (
     <OrdersList
       rows={data?.orders.map(toRow) ?? []}
+      canCreate={isDoctor || session?.isSuperAdmin === true}
       counterpartHeader={isDoctor ? "Laboratorija" : "Ordinacija"}
       statusOptions={statusOptions}
       statusFilter={status}

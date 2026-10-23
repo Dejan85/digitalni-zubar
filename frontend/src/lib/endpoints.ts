@@ -64,6 +64,35 @@ export function getOrder(id: string) {
   return api<{ order: OrderDetail }>(`/porudzbine/${id}`);
 }
 
+export interface CreateOrderItemInput {
+  serviceId?: string; // stavka iz kataloga (cenu uzima backend)
+  freeDescription?: string; // slobodan opis — tada je cena obavezna
+  quantity: number;
+  price?: number;
+}
+
+export interface CreateOrderInput {
+  technicianId: string;
+  patientId: string;
+  items: CreateOrderItemInput[];
+}
+
+export function createOrder(input: CreateOrderInput) {
+  return api<{ order: { id: string } }>("/porudzbine", {
+    method: "POST",
+    body: {
+      proteticarId: input.technicianId,
+      pacijentId: input.patientId,
+      stavke: input.items.map((i) => ({
+        uslugaId: i.serviceId,
+        slobodanOpis: i.freeDescription,
+        kolicina: i.quantity,
+        cena: i.price,
+      })),
+    },
+  });
+}
+
 export function updateOrderStatus(id: string, status: OrderStatus, deliveryDeadline?: string) {
   return api<{ order: Order }>(`/porudzbine/${id}/status`, {
     method: "PATCH",
