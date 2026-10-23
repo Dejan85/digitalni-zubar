@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/*
+ * Tokeni teme — jedino mesto gde su "sirove" boje. Komponente koriste samo tokene (bg-primary, text-primary-dark...),
+ * nikad bg-green-600, pa ThemePicker (components/dev) menja ove CSS promenljive uzivo bez izmene koda.
+ * Vrednosti su procena sa referentnog dizajna; menjaju se ovde ili preko pickera u devu.
+ */
+:root {
+  --primary: #16a34a; /* ziva zelena: dugmad, akcenti, aktivne stavke */
+  --primary-dark: #2c4a3e; /* sumska zelena: tamne kartice, naslovi sa kontrastom */
+  --surface-tint: #f0faf3; /* menta: pozadina sekcija/stranice */
+  --accent: #86efac; /* lime: glavna akcija (CTA) */
+
+  --background: #f7faf8;
+  --foreground: #14201a;
+  --card: #ffffff;
+  --muted: #5b6b62;
+  --danger: #dc2626; /* greške u formama i destruktivne akcije */
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-surface-tint: var(--surface-tint);
+  --color-accent: var(--accent);
+  /* izvedene nijanse iz primarne — jedna boja u pickeru daje celu skalu */
+  --color-primary-soft: color-mix(in oklab, var(--primary) 12%, white);
+  --color-primary-hover: color-mix(in oklab, var(--primary) 85%, black);
+  --color-accent-hover: color-mix(in oklab, var(--accent) 85%, black);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-danger: var(--danger);
+  --radius-card: 1.5rem;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
