@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ThemeSwitch } from "@/components/ui/ThemeSwitch";
 
 export interface AppLayoutNavItem {
   href: string;
@@ -80,9 +81,7 @@ export function AppLayout({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="h-9 px-4" onClick={onToggleTheme} aria-pressed={isDarkTheme}>
-              {isDarkTheme ? "Svetla tema" : "Tamna tema"}
-            </Button>
+            <ThemeSwitch isDark={isDarkTheme} onToggle={onToggleTheme} />
             <Button variant="outline" className="h-9 px-4" onClick={onSignOut}>
               Odjavi se
             </Button>

@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { Company, CompanyType, Order, OrderStatus } from "./types";
+import type { Company, CompanyType, Connection, ConnectionStatus, Note, Order, OrderStatus, Patient } from "./types";
 
 // Endpoint funkcije primaju engleske nazive i same prave telo zahteva sa nazivima koje backend očekuje.
 
@@ -46,5 +46,73 @@ export interface ListOrdersParams {
 export function listOrders({ status, page, pageSize }: ListOrdersParams = {}) {
   return api<{ orders: Order[]; page: number; pageSize: number; total: number }>("/porudzbine", {
     query: { status, page, pageSize },
+  });
+}
+
+export function updateMyCompany(input: { address?: string; phone?: string; email?: string }) {
+  return api<{ company: Company }>("/firme/me", {
+    method: "PATCH",
+    body: { adresa: input.address, telefon: input.phone, email: input.email },
+  });
+}
+
+export function searchCompanies(params: { type?: CompanyType; name?: string } = {}) {
+  return api<{ companies: Company[] }>("/firme", { query: { tip: params.type, naziv: params.name } });
+}
+
+export function listConnections(params: { direction?: "poslate" | "primljene"; status?: ConnectionStatus } = {}) {
+  return api<{ connections: Connection[] }>("/veze", { query: { smer: params.direction, status: params.status } });
+}
+
+export function sendConnectionRequest(companyId: string) {
+  return api<{ connection: Connection }>("/veze", { method: "POST", body: { firmaId: companyId } });
+}
+
+export function respondToConnection(id: string, status: "prihvaceno" | "odbijeno") {
+  return api<{ connection: Connection }>(`/veze/${id}`, { method: "PATCH", body: { status } });
+}
+
+export interface PatientInput {
+  firstName: string;
+  lastName: string;
+  birthDate: string; // YYYY-MM-DD
+  gender: "M" | "Z";
+}
+
+const patientBody = (p: Partial<PatientInput>) => ({
+  ime: p.firstName,
+  prezime: p.lastName,
+  datumRodjenja: p.birthDate,
+  pol: p.gender,
+});
+
+export function listPatients(q?: string) {
+  return api<{ patients: Patient[] }>("/pacijenti", { query: { q } });
+}
+
+export function getPatient(id: string) {
+  return api<{ patient: Patient }>(`/pacijenti/${id}`);
+}
+
+export function createPatient(input: PatientInput) {
+  return api<{ patient: Patient }>("/pacijenti", { method: "POST", body: patientBody(input) });
+}
+
+export function updatePatient(id: string, input: PatientInput) {
+  return api<{ patient: Patient }>(`/pacijenti/${id}`, { method: "PATCH", body: patientBody(input) });
+}
+
+export function deletePatient(id: string) {
+  return api<void>(`/pacijenti/${id}`, { method: "DELETE" });
+}
+
+export function listNotes(filter: { orderId?: string; patientId?: string }) {
+  return api<{ notes: Note[] }>("/beleske", { query: { porudzbinaId: filter.orderId, pacijentId: filter.patientId } });
+}
+
+export function createNote(input: { orderId?: string; patientId?: string; text: string }) {
+  return api<{ note: Note }>("/beleske", {
+    method: "POST",
+    body: { porudzbinaId: input.orderId, pacijentId: input.patientId, tekst: input.text },
   });
 }

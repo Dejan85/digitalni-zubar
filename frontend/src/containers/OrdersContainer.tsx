@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { OrdersList, type OrderRow } from "@/components/orders/OrdersList";
 import { useAuth } from "@/lib/auth";
+import { formatDate } from "@/lib/format";
 import { listOrders } from "@/lib/endpoints";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_TONES, ORDER_STATUSES } from "@/lib/order-status";
 import type { Order, OrderStatus } from "@/lib/types";
@@ -13,7 +14,6 @@ const PAGE_SIZE = 10;
 
 const statusOptions = ORDER_STATUSES.map((value) => ({ value, label: ORDER_STATUS_LABELS[value] }));
 
-const formatDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("sr-Latn-RS") : "—");
 
 export function OrdersContainer() {
   const { session } = useAuth();
