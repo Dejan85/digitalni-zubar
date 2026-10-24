@@ -12,10 +12,17 @@ export interface PartnerCard {
   address: string;
   contact: string; // telefon ili email
   tags: string[]; // nazivi usluga laboratorije (prazno za ordinacije)
-  worksCount: number | null; // broj zajedničkih radova; null kad se ne računa
-  statusLabel: string;
-  since: string | null; // datum uspostavljanja veze
-  gradient: string; // MOCK zaglavlje umesto fotografije
+  distance: string; // MOCK (rastojanje/kurir)
+  worksCount: number; // stvaran broj radova (ili mock kad ih nema)
+  rating: string; // MOCK
+  badge: { label: string; icon: string; tone: "primary" | "secondary" }; // MOCK verifikacija
+  express: boolean; // MOCK "24h Express"
+  imageUrl: string; // MOCK fotografija
+  imageAlt: string;
+  contactPerson: string; // MOCK
+  contract: { label: string; tone: "primary" | "tertiary" }; // MOCK
+  punctuality: string; // MOCK
+  statusLabel: string; // stvaran status veze (za kartice bez akcija)
   // šta kartica nudi: nalog (aktivna veza), odgovor (primljen zahtev), slanje zahteva (pretraga) ili samo status
   action:
     | { kind: "order"; companyId: string }
@@ -30,6 +37,9 @@ export interface PendingRequest {
   address: string;
   phone: string;
   receivedAgo: string;
+  contactPerson: string; // MOCK
+  quote: string; // MOCK poruka uz zahtev
+  icon: string; // MOCK
 }
 
 export interface ConnectionsKpis {
@@ -61,6 +71,13 @@ interface ConnectionsViewProps {
   errorMessage?: string;
 }
 
+// MOCK: filteri iz dizajna (backend nema grad, tip usluge ni ugovor) — onemogućeni
+const MOCK_FILTERS = [
+  ["Svi gradovi", "Beograd", "Novi Sad", "Niš", "Kragujevac"],
+  ["Sve usluge", "Fiksna protetika", "Mobilna protetika", "Implantoprotetika"],
+  ["Status ugovora: Svi", "Aktivan ugovor", "Na pauzi"],
+];
+
 const DISABLED_SELECT =
   "appearance-none rounded-lg bg-surface-container-low py-2.5 pl-3.5 pr-8 font-title-sm text-title-sm text-on-surface opacity-60 outline-none";
 
@@ -90,13 +107,28 @@ function PartnerCardView(props: { card: PartnerCard } & Pick<ConnectionsViewProp
   return (
     <div className="group flex flex-col justify-between overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm transition-all hover:shadow-md">
       <div>
-        <div className={`relative h-32 w-full overflow-hidden bg-gradient-to-br ${card.gradient}`}>
+        <div className="relative h-32 w-full overflow-hidden bg-surface-container">
+          {/* eslint-disable-next-line @next/next/no-img-element -- MOCK fotografija iz dizajna, spoljni URL */}
+          <img
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            alt={card.imageAlt}
+            src={card.imageUrl}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-on-surface/80 via-transparent to-transparent" />
           <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 font-label-sm text-label-sm font-semibold tracking-wide text-on-primary">
-              <Icon name="verified" className="text-[13px]" />
-              {card.statusLabel}
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-label-sm text-label-sm font-semibold tracking-wide ${
+                card.badge.tone === "primary" ? "bg-primary text-on-primary" : "bg-secondary-container text-on-secondary-container"
+              }`}
+            >
+              <Icon name={card.badge.icon} className="text-[13px]" />
+              {card.badge.label}
             </span>
+            {card.express && (
+              <span className="inline-flex items-center rounded-full bg-surface-container-highest px-2 py-0.5 font-label-sm text-label-sm font-bold text-on-surface">
+                24h Express
+              </span>
+            )}
           </div>
           <div className="absolute bottom-2.5 left-3 text-white">
             <span className="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-primary-fixed">{card.typeLabel}</span>
@@ -107,15 +139,15 @@ function PartnerCardView(props: { card: PartnerCard } & Pick<ConnectionsViewProp
           <div className="flex items-center justify-between gap-2">
             <span className="flex min-w-0 items-center gap-1 font-body-sm text-body-sm text-on-surface-variant">
               <Icon name="location_on" className="text-[16px] text-secondary" />
-              <span className="truncate">{card.address}</span>
+              <span className="truncate">
+                {card.address} ({card.distance})
+              </span>
             </span>
-            {card.worksCount !== null && (
-              <div className="flex shrink-0 items-center gap-1 rounded bg-surface-container-low px-2 py-0.5">
-                <Icon name="assignment" className="text-[16px] text-secondary" />
-                <span className="font-title-sm text-title-sm font-bold text-on-surface">{card.worksCount}</span>
-                <span className="font-body-sm text-body-sm text-on-surface-variant">radova</span>
-              </div>
-            )}
+            <div className="flex shrink-0 items-center gap-1 rounded bg-surface-container-low px-2 py-0.5">
+              <Icon name="star" className="text-[16px] text-amber-500 [font-variation-settings:'FILL'_1]" />
+              <span className="font-title-sm text-title-sm font-bold text-on-surface">{card.rating}</span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">({card.worksCount} radova)</span>
+            </div>
           </div>
           {card.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -128,18 +160,22 @@ function PartnerCardView(props: { card: PartnerCard } & Pick<ConnectionsViewProp
           )}
           <div className="flex flex-col gap-2 rounded-lg bg-surface-container-low p-3">
             <div className="flex items-center justify-between font-body-sm text-body-sm">
+              <span className="text-on-surface-variant">Glavni kontakt:</span>
+              <span className="font-semibold text-on-surface">{card.contactPerson}</span>
+            </div>
+            <div className="flex items-center justify-between font-body-sm text-body-sm">
               <span className="text-on-surface-variant">Telefon / Email:</span>
               <span className="max-w-[170px] truncate font-data-mono text-[12px] text-primary">{card.contact}</span>
             </div>
-            {card.since && (
-              <div className="flex items-center justify-between border-t-0 pt-1.5 font-label-sm text-label-sm">
-                <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                  <span className="size-1.5 rounded-full bg-primary" />
-                  Veza uspostavljena
-                </span>
-                <span className="font-medium text-secondary">{card.since}</span>
-              </div>
-            )}
+            <div className="flex items-center justify-between border-t-0 pt-1.5 font-label-sm text-label-sm">
+              <span
+                className={`inline-flex items-center gap-1 font-semibold ${card.contract.tone === "primary" ? "text-primary" : "text-tertiary"}`}
+              >
+                <span className={`size-1.5 rounded-full ${card.contract.tone === "primary" ? "bg-primary" : "bg-tertiary"}`} />
+                {card.contract.label}
+              </span>
+              <span className="font-medium text-secondary">{card.punctuality}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -314,7 +350,7 @@ export function ConnectionsView(props: ConnectionsViewProps) {
           iconBox="bg-surface-container-high text-secondary"
           footer={
             <div className={KPI_FOOTER}>
-              <span className="font-body-sm text-body-sm text-on-surface-variant">Vreme odgovora na zahtev za vezu</span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">Vreme prihvatanja digitalnog naloga</span>
             </div>
           }
         >
@@ -331,7 +367,7 @@ export function ConnectionsView(props: ConnectionsViewProps) {
           iconBox="bg-surface-variant text-on-surface-variant"
           footer={
             <div className={KPI_FOOTER}>
-              <span className="font-body-sm text-body-sm text-on-surface-variant">Još nepovezane u bazi</span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant">U krugu 25 km • Brzi kurirski prijem</span>
             </div>
           }
         >
@@ -387,10 +423,12 @@ export function ConnectionsView(props: ConnectionsViewProps) {
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {["Svi gradovi", "Sve usluge", "Status ugovora: Svi"].map((label) => (
-            <div key={label} className="relative" title="Uskoro">
-              <select disabled aria-label={label} className={DISABLED_SELECT}>
-                <option>{label}</option>
+          {MOCK_FILTERS.map((options) => (
+            <div key={options[0]} className="relative" title="Uskoro">
+              <select disabled aria-label={options[0]} className={DISABLED_SELECT}>
+                {options.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
               </select>
               <Icon name="arrow_drop_down" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant" />
             </div>
@@ -492,7 +530,7 @@ export function ConnectionsView(props: ConnectionsViewProps) {
               >
                 <div className="flex items-start gap-4">
                   <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-surface-variant font-bold text-primary">
-                    <Icon name="precision_manufacturing" className="text-[24px]" />
+                    <Icon name={request.icon} className="text-[24px]" />
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -502,10 +540,19 @@ export function ConnectionsView(props: ConnectionsViewProps) {
                       </span>
                       <span className="font-body-sm text-body-sm text-on-surface-variant">• primljeno {request.receivedAgo}</span>
                     </div>
-                    <div className="mt-2 flex items-center gap-4 font-body-sm text-body-sm text-on-surface">
+                    <p className="mt-1 font-body-md text-body-md text-on-surface-variant">&quot;{request.quote}&quot;</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-4 font-body-sm text-body-sm text-on-surface">
+                      <span className="flex items-center gap-1 text-on-surface-variant">
+                        <Icon name="person" className="text-[16px] text-secondary" />
+                        {request.contactPerson}
+                      </span>
                       <span className="flex items-center gap-1 text-on-surface-variant">
                         <Icon name="phone" className="text-[16px] text-secondary" />
                         {request.phone}
+                      </span>
+                      <span title="Uskoro" className="flex items-center gap-0.5 font-semibold text-primary opacity-60">
+                        Pregledaj ponuđeni cenovnik
+                        <Icon name="open_in_new" className="text-[14px]" />
                       </span>
                     </div>
                   </div>

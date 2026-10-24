@@ -5,9 +5,8 @@ import { useMemo, useState } from "react";
 
 import { ConnectionsView, type PartnerCard, type PendingRequest } from "@/components/connections/ConnectionsView";
 import { useAuth } from "@/lib/auth";
-import { formatReceivedAgo, formatResponseTime, mockHeaderGradient } from "@/lib/connections-mock";
+import { formatReceivedAgo, MOCK_RESPONSE_TIME, mockPartnerExtras } from "@/lib/connections-mock";
 import { listConnections, listOrders, listServices, respondToConnection, searchCompanies, sendConnectionRequest } from "@/lib/endpoints";
-import { formatDate } from "@/lib/format";
 import { useDebouncedValue } from "@/lib/hooks";
 import type { Company, Connection, ConnectionStatus } from "@/lib/types";
 
@@ -105,20 +104,34 @@ export function ConnectionsContainer() {
     { value: "find", label: isDoctor ? "Pronađi partnera (Baza laboratorija)" : "Pronađi partnera (Baza ordinacija)", count: null },
   ];
 
+  // MOCK polja kartice (dizajn ih ima, backend ne); broj radova je stvaran kad postoji
+  const cardMock = (id: string, mock: ReturnType<typeof mockPartnerExtras>) => ({
+    distance: mock.distance,
+    worksCount: worksByCounterpart.get(id) || mock.mockWorks,
+    rating: mock.rating,
+    badge: mock.badge,
+    express: mock.express,
+    imageUrl: mock.imageUrl,
+    imageAlt: mock.imageAlt,
+    contactPerson: mock.contactPerson,
+    contract: mock.contract,
+    punctuality: mock.punctuality,
+  });
+
   const toCard = (c: Connection): PartnerCard => {
     const id = counterpartId(c);
     const company = companiesById.get(id);
+    const mock = mockPartnerExtras(id);
+    const tags = (tagsByTechnician.get(id) ?? []).slice(0, MAX_TAGS);
     return {
       id: c.id,
       name: isAdmin ? `${nameOf(c.doctorId)} ↔ ${nameOf(c.technicianId)}` : nameOf(id),
-      typeLabel: isAdmin ? "Veza" : isDoctor ? "Zubotehnička laboratorija" : "Stomatološka ordinacija",
+      typeLabel: isAdmin ? "Veza" : isDoctor ? mock.labTypeLabel : "Stomatološka ordinacija",
       address: isAdmin ? "—" : company?.address || "—",
       contact: isAdmin ? "—" : contactOf(company),
-      tags: (tagsByTechnician.get(id) ?? []).slice(0, MAX_TAGS),
-      worksCount: isAdmin ? null : (worksByCounterpart.get(id) ?? 0),
+      tags: tags.length > 0 ? tags : mock.tags,
+      ...cardMock(id, mock),
       statusLabel: STATUS_LABELS[c.status],
-      since: c.status === "prihvaceno" ? formatDate(c.updatedAt) : null,
-      gradient: mockHeaderGradient(id),
       action:
         c.status === "prihvaceno" && !isAdmin && isDoctor
           ? { kind: "order", companyId: id }
@@ -134,14 +147,14 @@ export function ConnectionsContainer() {
     return {
       id: company.id,
       name: company.name,
-      typeLabel: company.type === "doktor" ? "Stomatološka ordinacija" : "Zubotehnička laboratorija",
+      typeLabel: company.type === "doktor" ? "Stomatološka ordinacija" : mockPartnerExtras(company.id).labTypeLabel,
       address: company.address || "—",
       contact: contactOf(company),
-      tags: (tagsByTechnician.get(company.id) ?? []).slice(0, MAX_TAGS),
-      worksCount: null,
+      tags: (tagsByTechnician.get(company.id) ?? []).slice(0, MAX_TAGS).length
+        ? (tagsByTechnician.get(company.id) ?? []).slice(0, MAX_TAGS)
+        : mockPartnerExtras(company.id).tags,
+      ...cardMock(company.id, mockPartnerExtras(company.id)),
       statusLabel: "Nepovezan partner",
-      since: null,
-      gradient: mockHeaderGradient(company.id),
       action: { kind: "send", disabledReason: existing ? `Veza postoji (${STATUS_LABELS[existing.status].toLowerCase()})` : null },
     };
   };
@@ -164,18 +177,17 @@ export function ConnectionsContainer() {
       address: company?.address || "—",
       phone: contactOf(company),
       receivedAgo: formatReceivedAgo(c.createdAt),
+      contactPerson: mockPartnerExtras(counterpartId(c)).contactPerson,
+      quote: mockPartnerExtras(counterpartId(c)).requestQuote,
+      icon: mockPartnerExtras(counterpartId(c)).requestIcon,
     };
   });
 
-  // KPI: sve iz pravih veza (odziv = prosek vremena od zahteva do odgovora)
+  // KPI: iz pravih veza; prosečan odziv je MOCK (domen ne meri odziv na digitalni nalog)
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
   const accepted = connections.filter((c) => c.status === "prihvaceno");
-  const responded = connections.filter((c) => c.status !== "na_cekanju");
-  const averageMinutes = responded.length
-    ? responded.reduce((sum, c) => sum + (new Date(c.updatedAt).getTime() - new Date(c.createdAt).getTime()) / 60000, 0) / responded.length
-    : null;
   const recommended = (companiesQuery.data?.companies ?? []).filter((company) => !connectedIds.has(company.id)).length;
 
   return (
@@ -186,7 +198,7 @@ export function ConnectionsContainer() {
         pending: connections.filter((c) => c.status === "na_cekanju").length,
         received: connections.filter((c) => c.status === "na_cekanju" && (isAdmin || isReceived(c))).length,
         sent: connections.filter((c) => c.status === "na_cekanju" && !isAdmin && !isReceived(c)).length,
-        responseTime: averageMinutes === null ? null : formatResponseTime(averageMinutes),
+        responseTime: MOCK_RESPONSE_TIME,
         recommended,
       }}
       counterpartLabel={isDoctor ? "laboratoriju" : "ordinaciju"}
