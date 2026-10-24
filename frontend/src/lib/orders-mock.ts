@@ -32,7 +32,7 @@ const CITIES = ["Beograd, Vračar", "Novi Sad", "Niš", "Kragujevac"];
 const AVATAR_TONES: MockOrderExtras["avatarTone"][] = ["primary", "secondary", "neutral", "tertiary"];
 
 // jednostavan stabilan hash stringa (FNV-1a) → nenegativan broj
-function hash(value: string): number {
+export function hash(value: string): number {
   let h = 2166136261;
   for (let i = 0; i < value.length; i++) {
     h ^= value.charCodeAt(i);
@@ -239,3 +239,76 @@ export function mockPatientExtras(patient: {
 
 // polja forme novog pacijenta (drawer) koja backend nema — prikazuju se onemogućena
 export const MOCK_NEW_PATIENT = { recordNumber: "#MK-902" };
+
+// ⚠ MOCK — ekran "Katalog usluga" (dizajn/katalog). Usluga u backendu ima samo naziv i cenu: šifra, kategorija, rok izrade,
+// zahtevani otisak, opis i status "aktivna" ne postoje. Kategorija se pogađa po nazivu, ostalo se računa deterministički
+// iz ID-a usluge. Spisak: documentation/REDIZAJN_MOCK.md §9.
+export type MockServiceCategory = "fixed" | "removable" | "implant" | "ortho";
+export type MockImpressionKind = "digital" | "analog" | "both" | "cbct";
+
+export interface MockServiceExtras {
+  code: string; // npr. "FP-07"
+  category: MockServiceCategory;
+  leadDays: number;
+  impression: MockImpressionKind;
+  description: string;
+}
+
+export const MOCK_SERVICE_CATEGORIES: { value: MockServiceCategory; label: string; prefix: string; badgeClass: string }[] = [
+  { value: "fixed", label: "Fiksna protetika", prefix: "FP", badgeClass: "bg-surface-container text-on-surface" },
+  { value: "removable", label: "Mobilna protetika", prefix: "MP", badgeClass: "bg-tertiary-fixed text-on-tertiary-fixed" },
+  { value: "implant", label: "Implantoprotetika", prefix: "IP", badgeClass: "bg-secondary-container text-on-secondary-container" },
+  { value: "ortho", label: "Ortodoncija & Splintovi", prefix: "OS", badgeClass: "bg-surface-container-high text-on-surface" },
+];
+
+const SERVICE_DESCRIPTIONS: Record<MockServiceCategory, string[]> = {
+  fixed: [
+    "Višeslojna keramika, visoka translucencija, individualno fasetiranje",
+    "Precizna marginalna adaptacija, estetska glazura i mikro-teksturisanje",
+    "Skelet bez nikla, višeslojna keramika, kontrola okluzije",
+  ],
+  removable: [
+    "Visokopolimerizovani ružičasti akrilat, kompletna garnitura zuba",
+    "Livena Co-Cr konstrukcija visoke elastičnosti, klizači i atečmeni",
+  ],
+  implant: [
+    "CNC glodani titanijum Grade 5, uključuje ti-base bazu i laboratorijski šraf",
+    "Biokompatibilna smola, metalne titanijumske čaure, digitalno planiranje",
+  ],
+  ortho: ["Dvoslojni termo-fleksibilan materijal, visoka udobnost protiv bruksizma", "Termoformirani sloj 2.0mm, precizno prianjanje"],
+};
+
+export const MOCK_IMPRESSION_LABELS: Record<MockImpressionKind, string> = {
+  digital: "Digitalni STL",
+  analog: "Analogni otisak",
+  both: "Analogni / Digitalni",
+  cbct: "Digitalni STL + CBCT",
+};
+
+function mockServiceCategory(name: string, h: number): MockServiceCategory {
+  const n = name.toLowerCase();
+  if (/implant|abutment|vodi[cč]/.test(n)) return "implant";
+  if (/proteza|skelet|vizil|akril/.test(n)) return "removable";
+  if (/splint|ortod|alajner|retainer/.test(n)) return "ortho";
+  if (/krunic|most|faset|vinir|inlay|onlay|cirkon|keram|e-?max/.test(n)) return "fixed";
+  return MOCK_SERVICE_CATEGORIES[h % MOCK_SERVICE_CATEGORIES.length].value;
+}
+
+export function mockServiceExtras(service: { id: string; name: string }): MockServiceExtras {
+  const h = hash(`service-${service.id}`);
+  const category = mockServiceCategory(service.name, h);
+  const meta = MOCK_SERVICE_CATEGORIES.find((c) => c.value === category)!;
+  const descriptions = SERVICE_DESCRIPTIONS[category];
+  const impression: MockImpressionKind =
+    category === "implant" ? (h % 2 ? "cbct" : "digital") : category === "removable" ? (h % 2 ? "both" : "analog") : (["digital", "both", "analog"] as const)[(h >>> 3) % 3];
+  return {
+    code: `${meta.prefix}-${String(10 + ((h >>> 5) % 90))}`,
+    category,
+    leadDays: 2 + ((h >>> 9) % 5),
+    impression,
+    description: descriptions[(h >>> 13) % descriptions.length],
+  };
+}
+
+// polja forme nove usluge koja backend nema — prikazuju se onemogućena
+export const MOCK_NEW_SERVICE = { code: "FP-15" };

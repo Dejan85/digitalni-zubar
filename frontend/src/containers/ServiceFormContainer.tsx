@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { ServiceForm } from "@/components/services/ServiceForm";
 import { ApiError } from "@/lib/api";
+import { MOCK_NEW_SERVICE, mockServiceExtras } from "@/lib/orders-mock";
 import { createService, updateService, type ServiceInput } from "@/lib/endpoints";
 import type { Service } from "@/lib/types";
 
@@ -60,7 +61,8 @@ export function ServiceFormContainer({ service, technicianId, onDone }: ServiceF
       errors={errors}
       formError={formError}
       isSubmitting={isSubmitting}
-      submitLabel={service ? "Sačuvaj" : "Dodaj uslugu"}
+      submitLabel={service ? "Sačuvaj izmene" : "Sačuvaj uslugu u katalogu"}
+      mockCode={service ? mockServiceExtras(service).code : MOCK_NEW_SERVICE.code}
       onSubmit={handleSubmit(onSubmit)}
       onCancel={onDone}
     />

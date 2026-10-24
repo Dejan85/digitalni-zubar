@@ -10,6 +10,7 @@ import type {
   PatientsKpis,
   ProstheticsFilter,
 } from "@/lib/patients-list";
+import { pageNumbers } from "@/lib/pagination";
 import { AGE_GROUP_OPTIONS, GENDER_OPTIONS, PROSTHETICS_OPTIONS } from "@/lib/patients-list";
 
 // markup je prenet iz dizajn/pacijenti i medicinski kartoni/code.html (iste Tailwind klase); podaci i filteri stižu gotovi kroz props
@@ -61,12 +62,6 @@ const ICON_BUTTON =
   "flex size-8 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary";
 
 const HEAD = "px-4 py-3 font-semibold";
-
-function pageNumbers(page: number, totalPages: number): (number | "gap")[] {
-  const pages = new Set([1, totalPages, page - 1, page, page + 1].filter((p) => p >= 1 && p <= totalPages));
-  const sorted = [...pages].sort((a, b) => a - b);
-  return sorted.flatMap((p, i) => (i > 0 && p - sorted[i - 1] > 1 ? ["gap" as const, p] : [p]));
-}
 
 function KpiCard(props: {
   label: string;
