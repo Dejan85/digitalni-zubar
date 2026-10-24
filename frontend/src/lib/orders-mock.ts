@@ -75,3 +75,88 @@ export function mockDashboardExtras(order: Order, patientInitials: string): Mock
     courierTime: `${pad(8 + ((h >>> 3) % 4))}:${pad(5 * ((h >>> 9) % 12))}`,
   };
 }
+
+// MOCK (detalj porudžbine, dizajn/porudzbina): FDI zubi, boja, tehnički detalji stavki, karton/JMBG/alergije pacijenta,
+// kontakt i licenca ordinacije, adresa laboratorije, kurir — backend i domen nemaju nijedno od ovih polja.
+export interface MockItemExtras {
+  detail: string;
+  chips: { icon: string; text: string }[];
+  fdi: string;
+  shade: { label: string; color: string } | null;
+  shadeLabel: string; // tekst kad stavka nema boju (npr. "Ti Base")
+}
+
+const ITEM_EXTRAS: MockItemExtras[] = [
+  {
+    detail: "Monolitni cirkon Multi-Layer (Katana HTML)",
+    chips: [
+      { icon: "blur_on", text: "Translucencija: Srednja" },
+      { icon: "auto_fix_high", text: "Morfologija: Anatomska" },
+    ],
+    fdi: "14, 15",
+    shade: { label: "A2", color: "#E5D7B7" },
+    shadeLabel: "",
+  },
+  {
+    detail: "Titan Grade 5, CNC glodanje po meri imp. platforme (Mis V3 kompatibilno)",
+    chips: [{ icon: "", text: "Emergence profile: anatomski konkavan" }],
+    fdi: "14",
+    shade: null,
+    shadeLabel: "Ti Base",
+  },
+  {
+    detail: "E-max press keramika, individualna stratifikacija",
+    chips: [{ icon: "blur_on", text: "Translucencija: Visoka" }],
+    fdi: "21, 22",
+    shade: { label: "BL2", color: "#F1ECDD" },
+    shadeLabel: "",
+  },
+];
+
+export function mockItemExtras(itemId: string, index: number): MockItemExtras {
+  return ITEM_EXTRAS[(hash(itemId) + index) % ITEM_EXTRAS.length];
+}
+
+export interface MockOrderDetailExtras {
+  recordNumber: string; // "#JP-882"
+  ageText: string; // "42 god."
+  birthDate: string; // "14.05.1983."
+  genderLabel: string; // "Muški" / "Ženski"
+  jmbg: string;
+  allergies: string;
+  doctorTitle: string;
+  doctorPhone: string;
+  doctorAddress: string;
+  license: string;
+  labAddress: string;
+  assignedTechnician: string;
+  courier: string;
+  labPhone: string;
+}
+
+export function mockOrderDetailExtras(order: Order, patientInitials: string): MockOrderDetailExtras {
+  const h = hash(`detail-${order.id}`);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const age = 25 + ((h >>> 4) % 40);
+  const year = new Date().getFullYear() - age;
+  const day = 1 + ((h >>> 7) % 28);
+  const month = 1 + ((h >>> 11) % 12);
+  const digits = String(hash(`jmbg-${order.id}`)).padStart(10, "0").slice(0, 10);
+  return {
+    recordNumber: `#${patientInitials || "XX"}-${100 + (h % 900)}`,
+    ageText: `${age} god.`,
+    birthDate: `${pad(day)}.${pad(month)}.${year}.`,
+    genderLabel: (h >>> 12) % 2 === 0 ? "Muški" : "Ženski",
+    jmbg: `${pad(day)}${pad(month)}${String(year).slice(1)}${digits.slice(0, 6)}`,
+    allergies:
+      "Nema evidentiranih alergija na lokalnu anesteziju ili zubotehničke metale. Gingiva zdrava, bez znakova upale.",
+    doctorTitle: "Spec. stom. protetike",
+    doctorPhone: `+381 6${h % 10} ${100 + ((h >>> 3) % 900)} ${1000 + ((h >>> 9) % 9000)}`,
+    doctorAddress: "Bulevar oslobođenja 78, 11000 Beograd",
+    license: `#SLD-${40000 + (h % 9999)}`,
+    labAddress: "Njegoševa 45, Vračar, Beograd",
+    assignedTechnician: "Petar Jovanović",
+    courier: "DExpress Medical Express",
+    labPhone: "+381 11 244 5678",
+  };
+}

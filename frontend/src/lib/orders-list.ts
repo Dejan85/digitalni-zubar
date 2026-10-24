@@ -83,7 +83,7 @@ export const patientNameOf = (o: Order) => `${o.patientFirstName ?? ""} ${o.pati
 
 const fmtDate = (d: Date) => d.toLocaleDateString("sr-Latn-RS", { day: "2-digit", month: "short", year: "numeric" });
 
-function deadlineInfo(o: Order, today: Date): Pick<OrderListRow, "deadline" | "deadlineHint" | "deadlineTone" | "isUrgent"> {
+export function deadlineInfo(o: Order, today: Date): Pick<OrderListRow, "deadline" | "deadlineHint" | "deadlineTone" | "isUrgent"> {
   if (!o.deliveryDeadline) return { deadline: "—", deadlineHint: "", deadlineTone: "normal", isUrgent: false };
   const d = new Date(o.deliveryDeadline);
   const deadline = fmtDate(d);

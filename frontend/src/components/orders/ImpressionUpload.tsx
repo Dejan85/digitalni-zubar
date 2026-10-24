@@ -29,7 +29,7 @@ export function ImpressionUpload(props: ImpressionUploadProps) {
   };
 
   return (
-    <form onSubmit={props.onSubmit} className="mb-4 flex flex-col gap-4 rounded-xl bg-surface-tint p-4" noValidate>
+    <form onSubmit={props.onSubmit} className="flex flex-col gap-4 rounded-xl bg-surface-container-low p-4" noValidate>
       <div className="max-w-xs">
         <Field label="Vrsta otiska" htmlFor="impression-type">
           <Select
@@ -52,7 +52,7 @@ export function ImpressionUpload(props: ImpressionUploadProps) {
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-center text-sm ${
-            isDragging ? "border-primary bg-primary-soft" : "border-primary/30"
+            isDragging ? "border-primary bg-primary-soft" : "border-outline-variant"
           }`}
         >
           <p>{props.file ? `${props.file.name} (${props.file.size})` : "Prevuci fajl ovde ili izaberi sa računara"}</p>

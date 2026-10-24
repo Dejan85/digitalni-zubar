@@ -7,17 +7,21 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { OrderDetail, type StatusAction } from "@/components/orders/OrderDetail";
+import { OrderDetail, OrderDetailMessage, type StatusAction } from "@/components/orders/OrderDetail";
 import { useAuth } from "@/lib/auth";
 import { createNote, getOrder, listNotes, listServices, updateOrderStatus, uploadImpression } from "@/lib/endpoints";
-import { formatDate, formatPrice } from "@/lib/format";
+import { formatDate, formatPrice, shortId } from "@/lib/format";
 import { formatFileSize, validateImpressionFile } from "@/lib/impressions";
+import { initials, deadlineInfo } from "@/lib/orders-list";
+import { mockItemExtras, mockOrderDetailExtras, mockOrderExtras } from "@/lib/orders-mock";
+import { buildTimeline } from "@/lib/order-timeline";
 import {
   allowedTransitions,
   ORDER_STATUS_ACTIONS,
   ORDER_STATUSES,
   ORDER_STATUS_LABELS,
   ORDER_STATUS_TONES,
+  REWORK_REASONS,
 } from "@/lib/order-status";
 import type { OrderStatus } from "@/lib/types";
 
@@ -37,6 +41,10 @@ export function OrderDetailContainer() {
   const [impressionFile, setImpressionFile] = useState<File | null>(null);
   const [impressionNote, setImpressionNote] = useState("");
   const [impressionError, setImpressionError] = useState<string>();
+
+  const [reworkReason, setReworkReason] = useState("");
+  const [reworkDescription, setReworkDescription] = useState("");
+  const [reworkError, setReworkError] = useState<string>();
 
   const orderQuery = useQuery({ queryKey: ["orders", id], queryFn: () => getOrder(id) });
   const order = orderQuery.data?.order;
@@ -112,6 +120,33 @@ export function OrderDetailContainer() {
     onError: () => queryClient.invalidateQueries({ queryKey: ["orders"] }),
   });
 
+  // dorada: razlog i opis se čuvaju kao ručna beleška (backend nema polje "razlog"), pa sledi promena statusa
+  const submitRework = useMutation({
+    mutationFn: async () => {
+      const reason = REWORK_REASONS.find((r) => r.value === reworkReason)?.label ?? reworkReason;
+      const description = reworkDescription.trim();
+      await createNote({ orderId: id, text: `Dorada: ${reason}${description ? ` — ${description}` : ""}` });
+      await updateOrderStatus(id, "vracena_na_doradu");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      setReworkReason("");
+      setReworkDescription("");
+      setReworkError(undefined);
+    },
+    onError: () => queryClient.invalidateQueries({ queryKey: ["orders"] }),
+  });
+
+  const handleReworkSubmit = () => {
+    if (!reworkReason) {
+      setReworkError("Izaberi razlog dorade");
+      return;
+    }
+    setReworkError(undefined);
+    submitRework.mutate();
+  };
+
   const serviceNames = new Map(servicesQuery.data?.services.map((s) => [s.id, s.name]));
   // super admin sme bilo koji status (backend ga ne ogranicava redosledom ni tipom firme)
   const transitions =
@@ -135,30 +170,77 @@ export function OrderDetailContainer() {
     changeStatus.mutate(status as OrderStatus);
   };
 
-  const total = order?.items.reduce((sum, item) => sum + Number(item.priceAtOrder) * item.quantity, 0) ?? 0;
+  if (orderQuery.isPending) return <OrderDetailMessage message="Učitavanje..." />;
+  if (!order) return <OrderDetailMessage message={orderQuery.error?.message ?? "Porudžbina nije pronađena"} isError />;
+
+  const canRework = transitions.includes("vracena_na_doradu");
+  const total = order.items.reduce((sum, item) => sum + Number(item.priceAtOrder) * item.quantity, 0);
+
+  const patientName = `${order.patientFirstName ?? ""} ${order.patientLastName ?? ""}`.trim() || "—";
+  const doctorName = order.doctorName ?? "—";
+  const technicianName = order.technicianName ?? "—";
+  const detailMock = mockOrderDetailExtras(order, initials(patientName));
+  const labMock = mockOrderExtras(order, technicianName);
+  const deadlineText = deadlineInfo(order, new Date());
+  const timeline = buildTimeline({
+    status: order.status,
+    doctorName,
+    technicianName,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    deadline: deadlineText.deadline,
+  });
+  const items = order.items.map((item, index) => ({
+    id: item.id,
+    description: item.freeDescription ?? (item.serviceId && serviceNames.get(item.serviceId)) ?? "Usluga iz kataloga",
+    ...mockItemExtras(item.id, index),
+    quantity: item.quantity,
+    unitPrice: formatPrice(item.priceAtOrder),
+    lineTotal: formatPrice(Number(item.priceAtOrder) * item.quantity),
+  }));
+  const fdiList = [...new Set(items.flatMap((item) => item.fdi.split(",").map((t) => t.trim())))];
 
   return (
     <OrderDetail
-      patientName={order && `${order.patientFirstName ?? ""} ${order.patientLastName ?? ""}`.trim()}
-      statusLabel={order && ORDER_STATUS_LABELS[order.status]}
-      statusTone={order && ORDER_STATUS_TONES[order.status]}
-      doctorName={order?.doctorName}
-      technicianName={order?.technicianName}
-      deadline={order && formatDate(order.deliveryDeadline)}
-      createdAt={order && formatDate(order.createdAt)}
-      items={(order?.items ?? []).map((item) => ({
-        id: item.id,
-        description:
-          item.freeDescription ?? (item.serviceId && serviceNames.get(item.serviceId)) ?? "Usluga iz kataloga",
-        quantity: item.quantity,
-        unitPrice: formatPrice(item.priceAtOrder),
-        lineTotal: formatPrice(Number(item.priceAtOrder) * item.quantity),
-      }))}
+      shortId={shortId(order.id)}
+      patient={{
+        name: patientName,
+        recordNumber: detailMock.recordNumber,
+        ageText: detailMock.ageText,
+        birthDate: detailMock.birthDate,
+        genderLabel: detailMock.genderLabel,
+        jmbg: detailMock.jmbg,
+        allergies: detailMock.allergies,
+      }}
+      statusLabel={ORDER_STATUS_LABELS[order.status]}
+      statusTone={ORDER_STATUS_TONES[order.status]}
+      isUrgent={deadlineText.isUrgent}
+      deadline={deadlineText.deadline}
+      deadlineHint={deadlineText.deadlineHint}
+      createdAt={formatDate(order.createdAt)}
+      fdiList={fdiList}
+      courier={detailMock.courier}
+      clinic={{
+        name: doctorName,
+        address: detailMock.doctorAddress,
+        contactName: `${doctorName} (${detailMock.doctorTitle})`,
+        phone: detailMock.doctorPhone,
+        license: detailMock.license,
+      }}
+      lab={{
+        name: technicianName,
+        address: detailMock.labAddress,
+        contactName: detailMock.assignedTechnician,
+        phone: detailMock.labPhone,
+        isVerified: labMock.partnerVerified,
+      }}
+      items={items}
       total={formatPrice(total)}
-      impressions={(order?.impressions ?? []).map((i) => ({
+      impressions={order.impressions.map((i) => ({
         id: i.id,
+        isDigital: i.type === "digitalni",
         typeLabel: i.type === "digitalni" ? "Digitalni otisak" : "Analogni otisak",
-        detail: [i.filePath?.split(/[\\/]/).pop(), i.note].filter(Boolean).join(" — ") || "—",
+        detail: [i.filePath?.split(/[\/]/).pop(), i.note].filter(Boolean).join(" — ") || "—",
       }))}
       impressionUpload={{
         type: impressionType,
@@ -177,6 +259,7 @@ export function OrderDetailContainer() {
           handleImpressionSubmit();
         },
       }}
+      timeline={timeline}
       notes={(notesQuery.data?.notes ?? []).map((n) => ({
         id: n.id,
         text: n.text,
@@ -191,11 +274,19 @@ export function OrderDetailContainer() {
       needsDeadline={transitions.includes("potvrdjena")}
       deadlineValue={deadline}
       onDeadlineChange={setDeadline}
-      actionError={deadlineError ?? changeStatus.error?.message}
-      isUpdatingStatus={changeStatus.isPending}
+      actionError={deadlineError ?? changeStatus.error?.message ?? submitRework.error?.message}
+      isUpdatingStatus={changeStatus.isPending || submitRework.isPending}
       onAction={handleAction}
-      isLoading={orderQuery.isPending}
-      errorMessage={orderQuery.error?.message}
+      rework={{
+        isAvailable: canRework,
+        reasons: REWORK_REASONS,
+        reason: reworkReason,
+        onReasonChange: setReworkReason,
+        description: reworkDescription,
+        onDescriptionChange: setReworkDescription,
+        error: reworkError,
+        onSubmit: handleReworkSubmit,
+      }}
     />
   );
 }

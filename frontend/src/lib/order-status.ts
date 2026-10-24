@@ -65,3 +65,13 @@ export const ORDER_STATUS_ACTIONS: Record<OrderStatus, string> = {
   odbijena: "Odbij",
   vracena_na_doradu: "Vrati na doradu",
 };
+
+// razlozi dorade iz dizajna (dizajn/porudzbina); backend nema polje "razlog" — upisuje se kao ručna beleška uz status
+export const REWORK_REASONS: { value: string; label: string }[] = [
+  { value: "rub", label: "Rubno zatvaranje (marginal fit)" },
+  { value: "boja", label: "Nekorektna boja / translucencija (Shade mismatch)" },
+  { value: "okluzija", label: "Visok zagriz / okluzalna smetnja" },
+  { value: "kontakt", label: "Loša aproksimalna kontaktna tačka" },
+  { value: "anatomija", label: "Anatomski oblik i estetika" },
+  { value: "ostalo", label: "Ostalo (opisati u komentaru)" },
+];
