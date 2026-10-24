@@ -62,6 +62,8 @@ export function NewOrderContainer() {
   const queryClient = useQueryClient();
   const isAdmin = session?.isSuperAdmin === true;
   const [formError, setFormError] = useState<string | null>(null);
+  // MOCK: izbor zuba (FDI) je samo lokalan, backend ga ne prima (documentation/REDIZAJN_MOCK.md §4)
+  const [selectedTeeth, setSelectedTeeth] = useState<string[]>([]);
 
   const {
     register,
@@ -76,6 +78,7 @@ export function NewOrderContainer() {
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const technicianId = useWatch({ control, name: "technicianId" });
+  const patientId = useWatch({ control, name: "patientId" });
   const items = useWatch({ control, name: "items" });
 
   // laboratorije: aktivne veze (super admin: sve laboratorije)
@@ -124,7 +127,30 @@ export function NewOrderContainer() {
           : NaN;
     return Number.isNaN(unit) ? null : unit * quantity;
   };
+  const unitPrice = (item: NewOrderValues["items"][number] | undefined): string => {
+    if (!item) return "";
+    const unit =
+      item.mode === "catalog"
+        ? Number(services.find((s) => s.id === item.serviceId)?.price ?? NaN)
+        : item.price.trim()
+          ? parseNumber(item.price)
+          : NaN;
+    return Number.isNaN(unit) ? "" : formatPrice(unit);
+  };
+  const itemTitle = (item: NewOrderValues["items"][number] | undefined): string => {
+    if (!item) return "";
+    return item.mode === "catalog" ? (services.find((s) => s.id === item.serviceId)?.name ?? "") : item.freeDescription.trim();
+  };
+  const itemQuantity = (item: NewOrderValues["items"][number] | undefined): number => {
+    const quantity = parseNumber(item?.quantity ?? "");
+    return Number.isInteger(quantity) && quantity >= 1 ? quantity : 0;
+  };
   const amounts = fields.map((_, i) => lineAmount(items?.[i]));
+  const technicianName = technicianOptions.find((o) => o.value === technicianId)?.label ?? "";
+  const patientName = patientOptions.find((o) => o.value === patientId)?.label ?? "";
+  const itemQuantities = fields.map((_, i) => itemQuantity(items?.[i]));
+  const toggleTooth = (fdi: string) =>
+    setSelectedTeeth((prev) => (prev.includes(fdi) ? prev.filter((t) => t !== fdi) : [...prev, fdi]));
   const total = amounts.reduce<number>((sum, a) => sum + (a ?? 0), 0);
 
   const mutation = useMutation({
@@ -163,8 +189,18 @@ export function NewOrderContainer() {
       technicianOptions={technicianOptions}
       patientOptions={patientOptions}
       serviceOptions={serviceOptions}
+      technicianName={technicianName}
+      patientName={patientName}
+      patientHref={patientId ? `/patients/${patientId}` : "/orders"}
       hasTechnician={!!technicianId}
       itemModes={fields.map((_, i) => items?.[i]?.mode ?? "catalog")}
+      itemTitles={fields.map((_, i) => itemTitle(items?.[i]))}
+      itemQuantities={itemQuantities}
+      itemUnitPrices={fields.map((_, i) => unitPrice(items?.[i]))}
+      unitsCount={itemQuantities.reduce((sum, q) => sum + q, 0)}
+      selectedTeeth={selectedTeeth}
+      onToggleTooth={toggleTooth}
+      onSelectTeeth={setSelectedTeeth}
       itemLineTotals={amounts.map((a) => (a === null ? "" : formatPrice(a)))}
       total={formatPrice(total)}
       itemsCount={fields.length}

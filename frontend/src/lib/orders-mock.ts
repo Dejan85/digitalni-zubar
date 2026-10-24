@@ -160,3 +160,34 @@ export function mockOrderDetailExtras(order: Order, patientInitials: string): Mo
     labPhone: "+381 11 244 5678",
   };
 }
+
+// ⚠ MOCK — ekran "Nova porudžbina" (dizajn/kreiranje novog protetskog naloga).
+// FDI šema zuba, VITA boja, translucencija, oblik, kurirsko preuzimanje i procena roka nemaju podlogu u backendu
+// (POST /porudzbine prima samo laboratoriju, pacijenta i stavke). Spisak: documentation/REDIZAJN_MOCK.md §4.
+export interface MockTooth {
+  fdi: string;
+  label: string;
+}
+
+const TOOTH_LABELS = ["I1", "I2", "C", "P1", "P2", "M1", "M2", "M3"];
+const quadrant = (q: number): MockTooth[] => TOOTH_LABELS.map((label, i) => ({ fdi: `${q}${i + 1}`, label }));
+
+// desna strana pacijenta (kvadranti 1 i 4) ide od zadnjeg zuba ka sredini, leva (2 i 3) od sredine ka zadnjem
+export const MOCK_UPPER_TEETH = { right: quadrant(1).reverse(), left: quadrant(2) };
+export const MOCK_LOWER_TEETH = { right: quadrant(4).reverse(), left: quadrant(3) };
+
+export const MOCK_ALL_TEETH = [
+  ...MOCK_UPPER_TEETH.right,
+  ...MOCK_UPPER_TEETH.left,
+  ...MOCK_LOWER_TEETH.right,
+  ...MOCK_LOWER_TEETH.left,
+].map((t) => t.fdi);
+export const MOCK_FRONT_TEETH = ["13", "12", "11", "21", "22", "23"];
+
+export const MOCK_SPEC_OPTIONS = {
+  shade: ["A2 (Standard)", "A1 (Svetlija)", "A3 (Tamnija)", "B1 (Beljena)", "B2", "BL2 (Bleach)"],
+  translucency: ["Prirodna (HT)", "Visoka (ST/UT)", "Opakna / maskirna"],
+  shape: ["Anatomski pun profil", "Redukcija za fasetiranje", "Minimalna preparacija"],
+};
+
+export const MOCK_LAB_LEAD_TIME = "Standardni rok izrade: 3-5 radnih dana";
