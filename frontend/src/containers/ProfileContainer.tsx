@@ -6,10 +6,9 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { ProfileForm } from "@/components/profile/ProfileForm";
+import { ProfileView } from "@/components/profile/ProfileView";
 import { ApiError } from "@/lib/api";
 import { getMyCompany, updateMyCompany } from "@/lib/endpoints";
-import { getCompanyTypeLabel } from "@/lib/navigation";
 
 const profileSchema = z.object({
   address: z.string(),
@@ -18,12 +17,14 @@ const profileSchema = z.object({
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
+const formatClock = (timestamp: number) =>
+  timestamp ? new Date(timestamp).toLocaleTimeString("sr-RS", { hour: "2-digit", minute: "2-digit", hour12: false }) : "—";
+
 export function ProfileContainer() {
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const { data, isPending } = useQuery({ queryKey: ["company", "me"], queryFn: getMyCompany });
+  const { data, isPending, dataUpdatedAt } = useQuery({ queryKey: ["company", "me"], queryFn: getMyCompany });
   const company = data?.company;
 
   const {
@@ -43,7 +44,6 @@ export function ProfileContainer() {
 
   async function onSubmit(values: ProfileValues) {
     setFormError(null);
-    setSuccessMessage(null);
     try {
       // backend odbija prazne stringove — šaljemo samo popunjena polja (brisanje polja API ne podržava)
       const orUndefined = (v: string) => v.trim() || undefined;
@@ -53,23 +53,27 @@ export function ProfileContainer() {
         email: orUndefined(values.email),
       });
       await queryClient.invalidateQueries({ queryKey: ["company", "me"] });
-      setSuccessMessage("Izmene su sačuvane.");
     } catch (e) {
       setFormError(e instanceof ApiError ? e.message : "Došlo je do greške");
     }
   }
 
+  function discardChanges() {
+    setFormError(null);
+    if (company) reset({ address: company.address ?? "", phone: company.phone ?? "", email: company.email ?? "" });
+  }
+
   return (
-    <ProfileForm
+    <ProfileView
       companyName={company?.name}
-      companyTypeLabel={company && getCompanyTypeLabel(company.type)}
       fields={{ address: register("address"), phone: register("phone"), email: register("email") }}
       errors={errors}
       formError={formError}
-      successMessage={successMessage}
       isLoading={isPending}
       isSubmitting={isSubmitting}
+      syncedAt={formatClock(dataUpdatedAt)}
       onSubmit={handleSubmit(onSubmit)}
+      onDiscard={discardChanges}
     />
   );
 }
