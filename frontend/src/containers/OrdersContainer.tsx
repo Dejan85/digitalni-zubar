@@ -1,55 +1,111 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import { OrdersList, type OrderRow } from "@/components/orders/OrdersList";
+import { OrdersList } from "@/components/orders/OrdersList";
 import { useAuth } from "@/lib/auth";
-import { formatDate } from "@/lib/format";
 import { listOrders } from "@/lib/endpoints";
-import { ORDER_STATUS_LABELS, ORDER_STATUS_TONES, ORDER_STATUSES } from "@/lib/order-status";
-import type { Order, OrderStatus } from "@/lib/types";
+import {
+  buildOrdersList,
+  DATE_RANGE_OPTIONS,
+  EMPTY_FILTERS,
+  hasActiveFilters,
+  ordersToCsv,
+  type OrdersFilters,
+} from "@/lib/orders-list";
 
-const PAGE_SIZE = 10;
+const FETCH_LIMIT = 100; // maksimum koji backend vraća po stranici; filteri i paginacija rade nad ovim uzorkom
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
-const statusOptions = ORDER_STATUSES.map((value) => ({ value, label: ORDER_STATUS_LABELS[value] }));
-
+function downloadCsv(content: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `porudzbine-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 export function OrdersContainer() {
   const { session } = useAuth();
-  const [status, setStatus] = useState<OrderStatus | "">("");
+  const [filters, setFilters] = useState<OrdersFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
 
+  // isti query ključ kao kontrolna tabla i shell — jedan zahtev za sve troje
   const { data, isPending, error } = useQuery({
-    queryKey: ["orders", { status, page }],
-    queryFn: () => listOrders({ status: status || undefined, page, pageSize: PAGE_SIZE }),
+    queryKey: ["orders", "dashboard"],
+    queryFn: () => listOrders({ pageSize: FETCH_LIMIT }),
+    enabled: !!session,
   });
 
   const isDoctor = session?.type === "doktor";
-  const toRow = (o: Order): OrderRow => ({
-    id: o.id,
-    patientName: `${o.patientFirstName ?? ""} ${o.patientLastName ?? ""}`.trim(),
-    counterpartName: (isDoctor ? o.technicianName : o.doctorName) ?? "—",
-    statusLabel: ORDER_STATUS_LABELS[o.status],
-    statusTone: ORDER_STATUS_TONES[o.status],
-    deadline: formatDate(o.deliveryDeadline),
-    createdAt: formatDate(o.createdAt),
-  });
+  const list = useMemo(
+    () => (data && session ? buildOrdersList(data.orders, session.type, filters) : null),
+    [data, session, filters],
+  );
+
+  const totalRows = list?.rows.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * pageSize;
+  const partnerLabel = isDoctor ? "Laboratorija" : "Ordinacija";
+
+  // svaka promena filtera vraća na prvu stranu
+  const updateFilters = (patch: Partial<OrdersFilters>) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+    setPage(1);
+  };
+
+  const pageRows = list?.rows.slice(start, start + pageSize) ?? [];
+  const allSelected = pageRows.length > 0 && pageRows.every((r) => selectedIds.includes(r.id));
 
   return (
     <OrdersList
-      rows={data?.orders.map(toRow) ?? []}
+      rows={pageRows}
+      kpis={list?.kpis ?? []}
+      chips={list?.chips ?? []}
+      partners={list?.partners ?? []}
+      partnerLabel={partnerLabel}
       canCreate={isDoctor || session?.isSuperAdmin === true}
-      counterpartHeader={isDoctor ? "Laboratorija" : "Ordinacija"}
-      statusOptions={statusOptions}
-      statusFilter={status}
-      onStatusFilterChange={(value) => {
-        setStatus(value as OrderStatus | "");
+      timeLabel={new Date().toLocaleTimeString("sr-Latn-RS", { hour: "2-digit", minute: "2-digit" })}
+      isPartial={!!data && data.total > data.orders.length}
+      statusFilter={filters.status}
+      onStatusFilterChange={(status) => updateFilters({ status })}
+      search={filters.search}
+      onSearchChange={(search) => updateFilters({ search })}
+      partnerId={filters.partnerId}
+      onPartnerChange={(partnerId) => updateFilters({ partnerId })}
+      dateRange={filters.dateRange}
+      dateRangeOptions={DATE_RANGE_OPTIONS}
+      onDateRangeChange={(dateRange) => updateFilters({ dateRange })}
+      hasFilters={hasActiveFilters(filters)}
+      onResetFilters={() => updateFilters(EMPTY_FILTERS)}
+      onExportCsv={() => list && downloadCsv(ordersToCsv(list.rows, partnerLabel))}
+      selectedIds={selectedIds}
+      allSelected={allSelected}
+      onToggleRow={(id) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}
+      onToggleAll={() =>
+        setSelectedIds((prev) =>
+          allSelected
+            ? prev.filter((id) => !pageRows.some((r) => r.id === id))
+            : [...new Set([...prev, ...pageRows.map((r) => r.id)])],
+        )
+      }
+      totalRows={totalRows}
+      rangeFrom={totalRows === 0 ? 0 : start + 1}
+      rangeTo={Math.min(start + pageSize, totalRows)}
+      page={currentPage}
+      totalPages={totalPages}
+      onPageChange={setPage}
+      pageSize={pageSize}
+      pageSizeOptions={PAGE_SIZE_OPTIONS}
+      onPageSizeChange={(size) => {
+        setPageSize(size);
         setPage(1);
       }}
-      page={page}
-      totalPages={data ? Math.ceil(data.total / data.pageSize) : 1}
-      onPageChange={setPage}
       isLoading={isPending}
       errorMessage={error?.message}
     />

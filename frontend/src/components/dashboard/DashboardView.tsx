@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { shortId } from "@/lib/format";
-import type { AlertItem, DashboardData, RecentFilter, RecentRow } from "@/lib/dashboard";
+import type { AlertItem, DashboardData, DeadlineItem, RecentFilter, RecentRow } from "@/lib/dashboard";
 
 interface DashboardViewProps {
   companyName?: string;
@@ -19,7 +19,8 @@ interface DashboardViewProps {
   errorMessage?: string;
 }
 
-// markup je prenet iz dizajn/code.html (iste Tailwind klase); podaci stižu gotovi iz lib/dashboard.ts
+// markup je prenet iz dizajn/kontrolna tabla 1/code.html (iste Tailwind klase); podaci stižu gotovi iz lib/dashboard.ts
+// (deo polja je MOCK — vidi lib/orders-mock.ts i documentation/TASKS.md → "Mock podaci na kontrolnoj tabli")
 
 const KPI_STYLE = [
   { icon: "bg-surface-container-low text-primary", unit: "text-primary", footer: "bg-surface-container-low/40" },
@@ -49,18 +50,43 @@ function Kpi({ item, index }: { item: DashboardData["kpis"][number]; index: numb
         </div>
       </div>
       <div className={`-mx-5 -mb-5 mt-4 flex items-center justify-between px-5 py-2.5 pt-3 ${style.footer}`}>
-        <span className="inline-flex items-center gap-1 font-label-sm text-label-sm font-semibold text-on-surface-variant">
-          {index === 0 && <Icon name="trending_up" className="text-[16px] text-primary" />}
-          {item.isAttention && <span className="size-2 animate-pulse rounded-full bg-tertiary" />}
-          {item.footerLeft}
+        <span
+          className={`inline-flex items-center gap-1 font-label-sm text-label-sm ${
+            item.footerLeft.chip
+              ? "rounded bg-primary-fixed/40 px-2 py-0.5 font-bold text-primary-container"
+              : item.footerLeft.dot === "static"
+                ? "font-semibold text-tertiary"
+                : "font-semibold text-on-surface-variant"
+          }`}
+        >
+          {item.footerLeft.icon && (
+            <Icon
+              name={item.footerLeft.icon}
+              className={item.footerLeft.chip ? "text-[14px]" : "text-[16px] text-primary"}
+            />
+          )}
+          {item.footerLeft.dot === "pulse" && <span className="size-2 animate-pulse rounded-full bg-tertiary" />}
+          {item.footerLeft.dot === "static" && <span className="size-1.5 rounded-full bg-tertiary" />}
+          {item.footerLeft.text}
         </span>
-        {item.footerRight && (
-          <span className="font-data-mono text-label-sm text-on-surface-variant">{item.footerRight}</span>
-        )}
+        {item.footerRight &&
+          (item.footerRight.href ? (
+            <Link
+              href={item.footerRight.href}
+              className="font-label-sm text-label-sm font-semibold text-primary hover:underline"
+            >
+              {item.footerRight.text}
+            </Link>
+          ) : (
+            <span className={`font-data-mono text-label-sm ${index === 1 ? "text-tertiary" : "text-on-surface-variant"}`}>
+              {item.footerRight.text}
+            </span>
+          ))}
       </div>
     </div>
   );
-  return item.href ? (
+  // kartica sa linkom u footeru ne sme biti ceo link (ugnježdeni <a>)
+  return item.href && !item.footerRight?.href ? (
     <Link href={item.href} className="block">
       {card}
     </Link>
@@ -105,6 +131,48 @@ function WeekStrip({ data }: { data: DashboardData }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function DeadlineCard({ item, tone, isFirst }: { item: DeadlineItem; tone: "today" | "soon"; isFirst: boolean }) {
+  const idColor = tone === "today" ? (isFirst ? "text-primary" : "text-secondary") : "text-tertiary";
+  const pill =
+    tone === "soon"
+      ? "whitespace-nowrap rounded bg-tertiary-fixed px-2 py-0.5 font-data-mono text-label-sm font-semibold text-tertiary"
+      : isFirst
+        ? "whitespace-nowrap rounded-full bg-primary-container px-2 py-0.5 font-label-sm text-label-sm font-semibold text-on-primary-container"
+        : "whitespace-nowrap rounded-full bg-surface-container-high px-2 py-0.5 font-label-sm text-label-sm font-semibold text-on-surface";
+  return (
+    <div className="flex flex-col gap-2 rounded-xl bg-surface-container-lowest p-3.5 shadow-sm transition-colors hover:bg-surface-container-low">
+      <div className="flex items-start justify-between gap-2">
+        <Link href={`/orders/${item.id}`} className="flex min-w-0 items-start gap-2.5">
+          <div
+            className={`tnum flex h-8 min-w-8 items-center justify-center whitespace-nowrap rounded-lg bg-surface-container px-1.5 font-data-mono text-label-sm font-bold ${idColor}`}
+          >
+            #{shortId(item.id)}
+          </div>
+          <div className="min-w-0">
+            <h4 className="truncate font-title-sm text-title-sm font-semibold text-on-surface">{item.title}</h4>
+            <p className="truncate font-body-sm text-body-sm text-on-surface-variant">{item.subtitle}</p>
+          </div>
+        </Link>
+        <span className={pill}>{item.timeLabel}</span>
+      </div>
+      {item.courierNote && (
+        <div className="-mx-3.5 -mb-3.5 flex items-center justify-between rounded-b-xl bg-surface-container-low/50 px-3.5 py-2 pt-2 text-body-sm">
+          <span className="flex items-center gap-1 font-label-sm text-label-sm text-on-surface-variant">
+            <Icon name="local_shipping" className="text-[14px] text-primary" />
+            {item.courierNote}
+          </span>
+          <Link
+            href={`/orders/${item.id}`}
+            className="inline-flex items-center gap-0.5 font-title-sm text-title-sm font-semibold text-primary hover:text-primary-container"
+          >
+            Protokol predaje <Icon name="arrow_forward" className="text-[14px]" />
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -164,7 +232,7 @@ function DeadlinesPanel({ data }: { data: DashboardData }) {
                   <div className="flex min-w-0 items-center gap-2">
                     <Icon name="calendar_view_week" className="text-[20px] text-on-surface-variant" />
                     <span className="truncate font-body-sm text-body-sm text-on-surface-variant">
-                      {group.items.map((i) => `${i.patientName} (#${shortId(i.id)})`).join(", ")}
+                      {group.items.map((i) => `${i.title} (#${shortId(i.id)})`).join(", ")}
                     </span>
                   </div>
                   <Link
@@ -175,27 +243,8 @@ function DeadlinesPanel({ data }: { data: DashboardData }) {
                   </Link>
                 </div>
               ) : (
-                group.items.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/orders/${item.id}`}
-                    className="flex items-start justify-between gap-2 rounded-xl bg-surface-container-lowest p-3.5 shadow-sm transition-colors hover:bg-surface-container-low"
-                  >
-                    <div className="flex min-w-0 items-start gap-2.5">
-                      <div className="tnum flex h-8 min-w-8 items-center justify-center rounded-lg bg-surface-container px-1.5 font-data-mono text-label-sm font-bold text-primary">
-                        #{shortId(item.id)}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="truncate font-title-sm text-title-sm font-semibold text-on-surface">
-                          {item.patientName}
-                        </h4>
-                        <p className="truncate font-body-sm text-body-sm text-on-surface-variant">
-                          {item.counterpartName}
-                        </p>
-                      </div>
-                    </div>
-                    <StatusBadge label={item.statusLabel} tone={item.statusTone} />
-                  </Link>
+                group.items.map((item, i) => (
+                  <DeadlineCard key={item.id} item={item} tone={group.tone as "today" | "soon"} isFirst={i === 0} />
                 ))
               )}
             </div>
@@ -273,6 +322,7 @@ function RecentOrdersPanel({
             <tr className="bg-surface-container-low/60 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
               <th className="rounded-l-lg px-3 py-3">ID / Pacijent</th>
               <th className="px-3 py-3">{isDoctor ? "Protetičar" : "Ordinacija"}</th>
+              <th className="px-3 py-3">Usluga &amp; Zubi</th>
               <th className="px-3 py-3">Rok</th>
               <th className="px-3 py-3">Status</th>
               <th className="rounded-r-lg px-3 py-3 text-right">Akcija</th>
@@ -280,24 +330,25 @@ function RecentOrdersPanel({
           </thead>
           <tbody className="divide-y divide-surface-container-low">
             {rows.map((row) => {
-              const idColor =
-                row.action.kind === "rework"
-                  ? "text-error"
-                  : row.action.kind === "review"
-                    ? "text-on-surface-variant"
-                    : "text-primary";
               const hintColor =
                 row.deadlineTone === "overdue"
                   ? "text-error font-semibold"
                   : row.deadlineTone === "soon"
                     ? "text-primary font-bold"
-                    : "text-on-surface-variant";
+                    : "text-primary font-semibold";
               return (
                 <tr key={row.id} className="transition-colors hover:bg-surface-container-low/40">
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
-                      <span className={`tnum font-data-mono text-label-sm font-bold ${idColor}`}>#{shortId(row.id)}</span>
-                      <span className="font-title-sm text-title-sm font-semibold text-on-surface">{row.patientName}</span>
+                      <span
+                        className={`tnum font-data-mono text-label-sm font-bold ${row.action.kind === "rework" ? "text-error" : "text-primary"}`}
+                      >
+                        #{shortId(row.id)}
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-title-sm text-title-sm font-semibold text-on-surface">{row.patientName}</span>
+                        <span className="font-body-sm text-body-sm text-on-surface-variant">Karton: {row.recordNumber}</span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-3 py-3">
@@ -307,6 +358,16 @@ function RecentOrdersPanel({
                       </div>
                       <span className="max-w-[120px] truncate font-body-md text-body-md font-medium text-on-surface">
                         {row.counterpartName}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex flex-col">
+                      <span className="max-w-[170px] truncate font-title-sm text-title-sm font-medium text-on-surface">
+                        {row.serviceTitle}
+                      </span>
+                      <span className="max-w-[170px] truncate font-data-mono text-label-sm text-on-surface-variant">
+                        {row.serviceDetail}
                       </span>
                     </div>
                   </td>
@@ -362,7 +423,7 @@ function RecentOrdersPanel({
             href="/orders/new"
             className="whitespace-nowrap rounded-lg bg-surface-container-lowest px-3.5 py-1.5 text-center font-title-sm text-title-sm font-semibold text-primary shadow-sm transition-all hover:bg-surface-container"
           >
-            Nova porudžbina
+            Prevuci fajl ovde
           </Link>
         </div>
       )}
@@ -395,6 +456,51 @@ const ALERT_TABS: { key: AlertTab; label: string; kinds: AlertItem["kind"][] }[]
   { key: "lab", label: "Laboratorija", kinds: ["info", "rework"] },
   { key: "patients", label: "Pacijenti", kinds: [] },
 ];
+
+const SOON = "Uskoro";
+
+function AlertActions({ alert }: { alert: AlertItem }) {
+  if (alert.kind === "urgent") {
+    return (
+      <div className="flex items-center gap-2 pt-2">
+        <Link
+          href={alert.href}
+          className="rounded-lg bg-surface-container-lowest px-3 py-1.5 font-title-sm text-title-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-surface-container"
+        >
+          Otvori rad
+        </Link>
+        <button
+          type="button"
+          disabled
+          title={SOON}
+          className="rounded-lg px-3 py-1.5 font-title-sm text-title-sm font-medium text-on-surface-variant opacity-60"
+        >
+          Pomeri termin
+        </button>
+      </div>
+    );
+  }
+  if (alert.kind === "rework") {
+    return (
+      <div className="flex items-center gap-2 pt-2">
+        <Link
+          href={alert.href}
+          className="w-full rounded-lg bg-surface-container-lowest py-1.5 text-center font-title-sm text-title-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-surface-container"
+        >
+          Pregledaj fotografije dorade
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center justify-between pt-2">
+      <span className="truncate font-data-mono text-label-sm font-semibold text-primary">{alert.footerNote}</span>
+      <Link href={alert.href} className="shrink-0 whitespace-nowrap font-title-sm text-title-sm font-semibold text-primary hover:underline">
+        Otvori rad
+      </Link>
+    </div>
+  );
+}
 
 function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
   const [tab, setTab] = useState<AlertTab>("all");
@@ -437,7 +543,7 @@ function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
           <button
             type="button"
             disabled
-            title="Uskoro"
+            title={SOON}
             className="inline-flex items-center gap-1.5 rounded-lg bg-surface-container-low px-3 py-1.5 font-title-sm text-title-sm font-semibold text-on-surface opacity-60"
           >
             <Icon name="add_alarm" className="text-[18px]" />
@@ -457,25 +563,21 @@ function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
             return (
               <div key={alert.id} className={`flex flex-col justify-between gap-3 rounded-xl p-4 shadow-sm ${style.card}`}>
                 <div className="flex flex-col gap-2">
-                  <span
-                    className={`inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 font-label-sm text-label-sm font-bold uppercase tracking-wider ${style.badge}`}
-                  >
-                    <Icon name={style.icon} className="text-[13px]" />
-                    {alert.badge}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-label-sm text-label-sm font-bold uppercase tracking-wider ${style.badge}`}
+                    >
+                      <Icon name={style.icon} className="text-[13px]" />
+                      {alert.badge}
+                    </span>
+                    <span className="font-data-mono text-label-sm font-medium text-on-surface-variant">{alert.timeAgo}</span>
+                  </div>
                   <div>
                     <h3 className="font-title-sm text-title-sm font-bold text-on-surface">{alert.title}</h3>
                     <p className="mt-1 font-body-sm text-body-sm text-on-surface-variant">{alert.text}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pt-2">
-                  <Link
-                    href={alert.href}
-                    className="rounded-lg bg-surface-container-lowest px-3 py-1.5 font-title-sm text-title-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-surface-container"
-                  >
-                    Otvori rad
-                  </Link>
-                </div>
+                <AlertActions alert={alert} />
               </div>
             );
           })}
@@ -485,7 +587,7 @@ function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
   );
 }
 
-// samo izgled kontrolne table (markup iz dizajn/code.html); sve brojke i tekstovi stižu gotovi kroz props
+// samo izgled kontrolne table (markup iz dizajn/kontrolna tabla 1/code.html); sve brojke i tekstovi stižu gotovi kroz props
 export function DashboardView(props: DashboardViewProps) {
   const { data, isLoading, errorMessage } = props;
   return (

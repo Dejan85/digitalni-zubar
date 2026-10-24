@@ -1,8 +1,11 @@
 import { shortId } from "./format";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_TONES, type StatusTone } from "./order-status";
+import { initials, patientNameOf } from "./orders-list";
+import { mockDashboardExtras, mockOrderExtras } from "./orders-mock";
 import type { CompanyType, Order, OrderStatus } from "./types";
 
 // Izvođenje podataka za kontrolnu tablu iz liste porudžbina (bez novog backend endpointa) — čista logika bez React-a.
+// Polja označena MOCK dolaze iz lib/orders-mock.ts (backend ih nema); spisak: documentation/TASKS.md → "Mock podaci na kontrolnoj tabli".
 
 // završna stanja: porudžbina više nije "u toku"
 const CLOSED: OrderStatus[] = ["isporucena", "otkazana", "odbijena"];
@@ -14,16 +17,25 @@ const dayDiff = (a: Date, b: Date) => Math.round((startOfDay(a).getTime() - star
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
 const fmt = (d: Date, options: Intl.DateTimeFormatOptions) => d.toLocaleDateString("sr-Latn-RS", options);
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const daysText = (n: number) => `${n} ${n === 1 ? "dan" : "dana"}`;
+// "1 rad", "2 rada", "5 radova"
+const worksText = (n: number) => `${n} ${n === 1 ? "rad" : n < 5 ? "rada" : "radova"}`;
+
+export interface KpiFooterLeft {
+  text: string;
+  icon?: string; // ikona ispred teksta
+  dot?: "pulse" | "static"; // tačka ispred teksta (pulsira = zahteva akciju)
+  chip?: boolean; // tekst u "čipu" (kao "2 rada danas" u mock-u)
+}
 
 export interface KpiItem {
   label: string;
   value: number;
   unit: string;
   icon: string;
-  footerLeft: string;
-  footerRight?: string;
-  isAttention?: boolean; // pulsirajuća tačka u footeru (zahteva akciju)
+  footerLeft: KpiFooterLeft;
+  footerRight?: { text: string; href?: string };
   href?: string;
 }
 
@@ -39,8 +51,10 @@ export interface WeekDay {
 
 export interface DeadlineItem {
   id: string;
-  patientName: string;
-  counterpartName: string;
+  title: string; // MOCK: usluga (+ zubi)
+  subtitle: string; // "Pacijent: X • Lab Y"
+  timeLabel: string; // "Danas do 14:00h" (MOCK vreme) / "Za 24h"
+  courierNote?: string; // MOCK: "Kurir preuzeo u 10:15h" — samo za poslate
   statusLabel: string;
   statusTone: StatusTone;
 }
@@ -58,11 +72,14 @@ export type RecentFilter = "all" | "u_izradi" | "poslata" | "vracena_na_doradu" 
 export interface RecentRow {
   id: string;
   patientName: string;
+  recordNumber: string; // MOCK
   counterpartName: string;
   deadline: string;
   deadlineHint: string;
   deadlineTone: "overdue" | "soon" | "normal";
   counterpartInitials: string;
+  serviceTitle: string; // MOCK
+  serviceDetail: string; // MOCK
   action: { label: string; kind: "details" | "track" | "review" | "rework" };
   statusLabel: string;
   statusTone: StatusTone;
@@ -72,8 +89,10 @@ export interface AlertItem {
   id: string;
   kind: "urgent" | "rework" | "info";
   badge: string;
+  timeAgo: string; // stvarno, iz updatedAt porudžbine
   title: string;
   text: string;
+  footerNote?: string; // npr. "Korisnik: Lab DentalArt" (info kartica)
   href: string;
 }
 
@@ -97,14 +116,6 @@ const RECENT_FILTERS: { key: RecentFilter; label: string }[] = [
   { key: "isporucena", label: "Isporučeno" },
 ];
 
-const initials = (name: string) =>
-  name
-    .split(/s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-
 // akcija u tabeli zavisi od stanja (kao u dizajn/code.html: Prati / Pregled / Komentar / Detalji)
 const ROW_ACTION: Record<string, RecentRow["action"]> = {
   default: { label: "Detalji", kind: "details" },
@@ -121,7 +132,18 @@ function isoWeek(d: Date): number {
   return 1 + Math.round(((t.getTime() - firstThursday.getTime()) / DAY_MS - 3 + ((firstThursday.getDay() + 6) % 7)) / 7);
 }
 
-const patientName = (o: Order) => `${o.patientFirstName ?? ""} ${o.patientLastName ?? ""}`.trim() || "—";
+// "Pre 25 min", "Pre 1h 10m", "Pre 3h", "Pre 2 dana"
+function timeAgo(iso: string, now: Date): string {
+  const minutes = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 60_000));
+  if (minutes < 1) return "Upravo sada";
+  if (minutes < 60) return `Pre ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return minutes % 60 === 0 ? `Pre ${hours}h` : `Pre ${hours}h ${minutes % 60}m`;
+  return `Pre ${daysText(Math.floor(hours / 24))}`;
+}
+
+// usluga za prikaz u naslovu kartice: "Zirconia krunica (FDI: 14, 15)"
+const serviceLabel = (s: { title: string; tag?: string }) => (s.tag ? `${s.title} (${s.tag})` : s.title);
 
 export function buildDashboard(
   orders: Order[],
@@ -130,68 +152,76 @@ export function buildDashboard(
   now: Date = new Date(),
 ): DashboardData {
   const today = startOfDay(now);
-  const counterpart = (o: Order) => (companyType === "doktor" ? o.technicianName : o.doctorName) ?? "—";
+  const isDoctor = companyType === "doktor";
+  const counterpart = (o: Order) => (isDoctor ? o.technicianName : o.doctorName) ?? "—";
   const deadlineOf = (o: Order) => (o.deliveryDeadline ? new Date(o.deliveryDeadline) : null);
   const daysLeft = (o: Order) => {
     const d = deadlineOf(o);
     return d ? dayDiff(d, today) : null;
   };
+  const patientName = (o: Order) => patientNameOf(o);
 
   const active = orders.filter(isActive);
   const monday = addDays(today, -((today.getDay() + 6) % 7));
   const sunday = addDays(monday, 6);
 
   // --- KPI kartice
-  const awaitingConfirmation = orders.filter((o) => o.status === "primljena").length;
-  const dueSoon = active.filter((o) => {
-    const left = daysLeft(o);
-    return left !== null && left >= 0 && left <= 6;
+  const awaitingConfirmation = orders.filter((o) => o.status === "primljena");
+  const dueThisWeek = active.filter((o) => {
+    const d = deadlineOf(o);
+    return d !== null && d >= monday && startOfDay(d) <= sunday;
   });
-  const dueToday = dueSoon.filter((o) => daysLeft(o) === 0).length;
+  const dueToday = active.filter((o) => daysLeft(o) === 0).length;
   const overdue = active.filter((o) => (daysLeft(o) ?? 0) < 0).length;
   const createdThisWeek = orders.filter((o) => {
     const created = startOfDay(new Date(o.createdAt));
     return created >= monday && created <= sunday;
   }).length;
 
-  const isDoctor = companyType === "doktor";
   const kpis: KpiItem[] = [
     {
       label: "Aktivne porudžbine",
       value: active.length,
       unit: "radova",
       icon: "view_in_ar",
-      footerLeft: `+${createdThisWeek} ove nedelje`,
-      footerRight: `${active.filter((o) => o.status === "u_izradi").length} u izradi`,
+      footerLeft: { text: `+${createdThisWeek} ove nedelje`, icon: "trending_up" },
+      footerRight: { text: `${active.filter((o) => o.status === "u_izradi").length} u izradi` },
       href: "/orders",
     },
     {
       label: isDoctor ? "Čeka potvrdu laboratorije" : "Čeka vašu potvrdu",
-      value: awaitingConfirmation,
-      unit: "porudžbina",
+      value: awaitingConfirmation.length,
+      unit: "digitalna STL", // MOCK: sve se prikazuje kao digitalno, backend nema tip otiska u listi
       icon: "hourglass_top",
-      footerLeft:
-        awaitingConfirmation === 0 ? "Sve potvrđeno" : isDoctor ? "Čeka se laboratorija" : "Akcija potrebna",
-      isAttention: awaitingConfirmation > 0 && !isDoctor,
+      footerLeft: {
+        text: awaitingConfirmation.length === 0 ? "Sve potvrđeno" : isDoctor ? "Akcija potrebna (Lab)" : "Akcija potrebna",
+        dot: awaitingConfirmation.length > 0 ? "pulse" : undefined,
+      },
+      footerRight: { text: "Prosek: 3.2h" }, // MOCK: konstanta, backend ne meri vreme odgovora laboratorije
       href: "/orders",
     },
     {
-      label: "Rokovi u narednih 7 dana",
-      value: dueSoon.length,
+      label: "Rok isporuke ove nedelje",
+      value: dueThisWeek.length,
       unit: "isporuka",
       icon: "local_shipping",
-      footerLeft: dueToday > 0 ? `${dueToday} danas` : "Nema rokova danas",
-      footerRight: overdue > 0 ? `${overdue} kasni` : undefined,
-      isAttention: overdue > 0,
+      footerLeft: {
+        text: dueToday > 0 ? `${worksText(dueToday)} danas` : overdue > 0 ? `${overdue} kasni` : "Nema rokova danas",
+        icon: "notifications_active",
+        chip: true,
+      },
+      footerRight: { text: "Termini spremni" }, // MOCK: statična oznaka
     },
     {
-      label: "Zahtevi za povezivanje",
+      label: "Novi zahtevi za povezivanje",
       value: pendingRequests,
       unit: "zahteva",
       icon: "hub",
-      footerLeft: pendingRequests > 0 ? "Čeka odgovor" : "Nema novih zahteva",
-      isAttention: pendingRequests > 0,
-      href: "/connections",
+      footerLeft: {
+        text: isDoctor ? "Nova laboratorija" : "Nova ordinacija",
+        dot: "static",
+      },
+      footerRight: { text: "Pregledaj", href: "/connections" },
     },
   ];
 
@@ -224,19 +254,32 @@ export function buildDashboard(
   const deadlineGroups: DeadlineGroup[] = [...groups.entries()]
     .sort(([a], [b]) => a - b)
     .map(([left, list]) => {
-      const dateText = fmt(addDays(today, left), { weekday: "short", day: "numeric", month: "long" });
-      return {
-        key: String(left),
-        title: left === 0 ? `Danas (${dateText})` : left === 1 ? `Sutra (${dateText})` : dateText,
-        countLabel: `${list.length} ${list.length === 1 ? "rad" : "radova"}`,
-        tone: left === 0 ? "today" : left === 1 ? "soon" : "later",
-        items: list.map((o) => ({
+      const date = addDays(today, left);
+      const dayText = `${date.getDate()}. ${cap(fmt(date, { month: "long" }))}`;
+      const toItem = (o: Order): DeadlineItem => {
+        const patient = patientName(o);
+        const extras = mockDashboardExtras(o, initials(patient));
+        return {
           id: o.id,
-          patientName: patientName(o),
-          counterpartName: counterpart(o),
+          title: serviceLabel(mockOrderExtras(o, counterpart(o)).service),
+          subtitle: `Pacijent: ${patient} • ${isDoctor ? "Lab " : ""}${counterpart(o)}`,
+          timeLabel: left === 0 ? `Danas do ${extras.deliveryTime}h` : left === 1 ? "Za 24h" : `Za ${daysText(left)}`,
+          courierNote: o.status === "poslata" ? `Kurir preuzeo u ${extras.courierTime}h` : undefined,
           statusLabel: ORDER_STATUS_LABELS[o.status],
           statusTone: ORDER_STATUS_TONES[o.status],
-        })),
+        };
+      };
+      return {
+        key: String(left),
+        title:
+          left === 0
+            ? `Danas (${cap(fmt(date, { weekday: "short" }))}, ${dayText})`
+            : left === 1
+              ? `Sutra (${cap(fmt(date, { weekday: "short" }))}, ${dayText})`
+              : `${cap(fmt(date, { weekday: "long" }))} (${dayText})`,
+        countLabel: left === 0 ? `${worksText(list.length)} ${list.length === 1 ? "očekivan" : "očekivana"}` : left === 1 ? worksText(list.length) : `${list.length} zakazana rada`,
+        tone: left === 0 ? "today" : left === 1 ? "soon" : "later",
+        items: list.map(toItem),
       };
     });
 
@@ -244,6 +287,7 @@ export function buildDashboard(
   const toRow = (o: Order): RecentRow => {
     const left = daysLeft(o);
     const d = deadlineOf(o);
+    const patient = patientName(o);
     let hint = "";
     let tone: RecentRow["deadlineTone"] = "normal";
     if (d && left !== null && isActive(o)) {
@@ -260,14 +304,18 @@ export function buildDashboard(
         hint = `Za ${daysText(left)}`;
       }
     }
+    const service = mockOrderExtras(o, counterpart(o)).service;
     return {
       id: o.id,
-      patientName: patientName(o),
+      patientName: patient,
+      recordNumber: mockDashboardExtras(o, initials(patient)).recordNumber,
       counterpartName: counterpart(o),
-      deadline: d ? fmt(d, { day: "numeric", month: "short" }) : "—",
+      deadline: d ? `${fmt(d, { day: "numeric" })}. ${cap(fmt(d, { month: "short" }))}` : "—",
       deadlineHint: hint,
       deadlineTone: tone,
       counterpartInitials: initials(counterpart(o)),
+      serviceTitle: service.title,
+      serviceDetail: [service.tag, service.detail].filter(Boolean).join(" • "),
       action: ROW_ACTION[o.status] ?? ROW_ACTION.default,
       statusLabel: ORDER_STATUS_LABELS[o.status],
       statusTone: ORDER_STATUS_TONES[o.status],
@@ -298,6 +346,7 @@ export function buildDashboard(
       id: `deadline-${o.id}`,
       kind: "urgent",
       badge: left < 0 ? "Rok istekao" : "Hitan rok",
+      timeAgo: timeAgo(o.updatedAt, now),
       title: `Rok isporuke za rad #${shortId(o.id)} ${when}`,
       text: `Pacijent: ${patientName(o)} • ${counterpart(o)}`,
       href: `/orders/${o.id}`,
@@ -308,9 +357,24 @@ export function buildDashboard(
       alerts.push({
         id: `rework-${o.id}`,
         kind: "rework",
-        badge: "Vraćeno na doradu",
+        badge: "Napomena za doradu",
+        timeAgo: timeAgo(o.updatedAt, now),
         title: `Rad #${shortId(o.id)} je vraćen na doradu`,
         text: `Pacijent: ${patientName(o)} • ${counterpart(o)}`,
+        href: `/orders/${o.id}`,
+      });
+    } else if (o.status === "potvrdjena" && isDoctor) {
+      const deadline = deadlineOf(o);
+      alerts.push({
+        id: `accepted-${o.id}`,
+        kind: "info",
+        badge: "Lab prihvatila",
+        timeAgo: timeAgo(o.updatedAt, now),
+        title: `${counterpart(o)}: ${deadline ? "Određen rok" : "Porudžbina potvrđena"} za #${shortId(o.id)}`,
+        text: `Laboratorija ${counterpart(o)} je prihvatila porudžbinu #${shortId(o.id)} (${patientName(o)})${
+          deadline ? ` i odredila predviđeni rok za ${deadline.toLocaleDateString("sr-Latn-RS")}` : ""
+        }.`,
+        footerNote: `Laboratorija: ${counterpart(o)}`,
         href: `/orders/${o.id}`,
       });
     } else if (o.status === "primljena" && !isDoctor) {
@@ -318,8 +382,10 @@ export function buildDashboard(
         id: `new-${o.id}`,
         kind: "info",
         badge: "Nova porudžbina",
+        timeAgo: timeAgo(o.updatedAt, now),
         title: `Porudžbina #${shortId(o.id)} čeka potvrdu`,
         text: `Pacijent: ${patientName(o)} • ${counterpart(o)}`,
+        footerNote: `Ordinacija: ${counterpart(o)}`,
         href: `/orders/${o.id}`,
       });
     }
@@ -328,7 +394,7 @@ export function buildDashboard(
   alerts.sort((a, b) => rank[a.kind] - rank[b.kind]);
 
   const month = fmt(today, { month: "long" });
-  const monthLabel = `${month.charAt(0).toUpperCase()}${month.slice(1)} ${today.getFullYear()}`;
+  const monthLabel = `${cap(month)} ${today.getFullYear()}`;
 
   return { monthLabel, weekNumber: isoWeek(today), weekLabel, weekDays, kpis, deadlineGroups, recentFilters, recentRows, alerts: alerts.slice(0, 6) };
 }
