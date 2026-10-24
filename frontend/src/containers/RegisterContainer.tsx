@@ -3,27 +3,28 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { RegisterForm } from "@/components/auth/RegisterForm";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { register as registerCompany } from "@/lib/endpoints";
+import { getPasswordStrength } from "@/lib/password-strength";
 
-const registerSchema = z.object({
-  companyName: z.string().min(1, "Naziv firme je obavezan"),
-  type: z.enum(["doktor", "proteticar"]),
-  address: z.string(),
-  phone: z.string(),
-  companyEmail: z.string().refine((v) => v === "" || z.email().safeParse(v).success, "Email nije validan"),
-  email: z.email("Email nije validan"),
-  password: z.string().min(8, "Lozinka mora imati bar 8 karaktera"),
-});
+const registerSchema = z
+  .object({
+    companyName: z.string().trim().min(1, "Naziv je obavezan"),
+    type: z.enum(["doktor", "proteticar"]),
+    phone: z.string().trim().min(1, "Telefon je obavezan"),
+    email: z.email("Email nije validan"),
+    password: z.string().min(8, "Lozinka mora imati bar 8 karaktera"),
+    passwordConfirm: z.string(),
+    termsAccepted: z.boolean().refine((v) => v, "Morate prihvatiti uslove korišćenja"),
+    privacyAccepted: z.boolean().refine((v) => v, "Morate dati saglasnost za obradu podataka"),
+  })
+  .refine((v) => v.password === v.passwordConfirm, { path: ["passwordConfirm"], message: "Lozinke se ne poklapaju" });
 type RegisterValues = z.infer<typeof registerSchema>;
-
-// prazna polja iz forme su "", a backend traži izostavljeno polje
-const emptyToUndefined = (value: string) => (value.trim() === "" ? undefined : value.trim());
 
 export function RegisterContainer() {
   const { signIn } = useAuth();
@@ -34,23 +35,21 @@ export function RegisterContainer() {
     register,
     handleSubmit,
     setError,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { type: "doktor", address: "", phone: "", companyEmail: "" },
+    defaultValues: { type: "doktor", termsAccepted: false, privacyAccepted: false },
   });
+
+  const accountType = useWatch({ control, name: "type" });
+  const password = useWatch({ control, name: "password" });
 
   async function onSubmit(values: RegisterValues) {
     setFormError(null);
     try {
       const { token } = await registerCompany({
-        company: {
-          name: values.companyName.trim(),
-          type: values.type,
-          address: emptyToUndefined(values.address),
-          phone: emptyToUndefined(values.phone),
-          email: emptyToUndefined(values.companyEmail),
-        },
+        company: { name: values.companyName.trim(), type: values.type, phone: values.phone.trim() },
         user: { email: values.email, password: values.password },
       });
       signIn(token);
@@ -71,16 +70,19 @@ export function RegisterContainer() {
       fields={{
         companyName: register("companyName"),
         type: register("type"),
-        address: register("address"),
         phone: register("phone"),
-        companyEmail: register("companyEmail"),
         email: register("email"),
         password: register("password"),
+        passwordConfirm: register("passwordConfirm"),
+        termsAccepted: register("termsAccepted"),
+        privacyAccepted: register("privacyAccepted"),
       }}
       errors={errors}
       formError={formError}
       isSubmitting={isSubmitting}
       onSubmit={handleSubmit(onSubmit)}
+      accountType={accountType}
+      passwordStrength={getPasswordStrength(password ?? "")}
     />
   );
 }

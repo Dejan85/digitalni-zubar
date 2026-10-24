@@ -299,6 +299,14 @@ body {
   user-select: none;
 }
 
+/* blaga dekorativna mreža iza login kartice (dizajn/login strana: .dental-grid-pattern, boja iz tokena) */
+.dental-grid-pattern {
+  background-size: 32px 32px;
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--primary) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--primary) 5%, transparent) 1px, transparent 1px);
+}
+
 /* tabularni brojevi za ID-jeve, rokove i cene (dizajn/DESIGN.md → Numeric Display) */
 .tnum {
   font-feature-settings: "tnum" 1;
