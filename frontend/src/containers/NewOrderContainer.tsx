@@ -58,9 +58,10 @@ const EMPTY_ITEM: NewOrderValues["items"][number] = {
 
 interface NewOrderContainerProps {
   initialPatientId?: string; // iz liste pacijenata ("+ Rad")
+  initialTechnicianId?: string; // iz kartice partnera ("Kreiraj nalog")
 }
 
-export function NewOrderContainer({ initialPatientId = "" }: NewOrderContainerProps) {
+export function NewOrderContainer({ initialPatientId = "", initialTechnicianId = "" }: NewOrderContainerProps) {
   const { session } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -78,7 +79,7 @@ export function NewOrderContainer({ initialPatientId = "" }: NewOrderContainerPr
     formState: { errors, isSubmitting },
   } = useForm<NewOrderValues>({
     resolver: zodResolver(orderSchema),
-    defaultValues: { technicianId: "", patientId: initialPatientId, items: [{ ...EMPTY_ITEM }] },
+    defaultValues: { technicianId: initialTechnicianId, patientId: initialPatientId, items: [{ ...EMPTY_ITEM }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   const technicianId = useWatch({ control, name: "technicianId" });

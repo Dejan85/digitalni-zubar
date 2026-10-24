@@ -1,29 +1,26 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import { ConnectionsView, type CompanyRow, type ConnectionRow } from "@/components/connections/ConnectionsView";
+import { ConnectionsView, type PartnerCard, type PendingRequest } from "@/components/connections/ConnectionsView";
 import { useAuth } from "@/lib/auth";
-import { listConnections, respondToConnection, searchCompanies, sendConnectionRequest } from "@/lib/endpoints";
+import { formatReceivedAgo, formatResponseTime, mockHeaderGradient } from "@/lib/connections-mock";
+import { listConnections, listOrders, listServices, respondToConnection, searchCompanies, sendConnectionRequest } from "@/lib/endpoints";
+import { formatDate } from "@/lib/format";
 import { useDebouncedValue } from "@/lib/hooks";
 import type { Company, Connection, ConnectionStatus } from "@/lib/types";
-import type { StatusTone } from "@/lib/order-status";
 
-type Tab = "active" | "received" | "sent";
+type Tab = "active" | "received" | "sent" | "find";
 
 const STATUS_LABELS: Record<ConnectionStatus, string> = {
   na_cekanju: "Na čekanju",
-  prihvaceno: "Aktivna",
+  prihvaceno: "Povezan partner",
   odbijeno: "Odbijena",
 };
-const STATUS_TONES: Record<ConnectionStatus, StatusTone> = {
-  na_cekanju: "neutral",
-  prihvaceno: "success",
-  odbijeno: "danger",
-};
 
-const contactOf = (c?: Company) => [c?.address, c?.phone].filter(Boolean).join(" · ") || "—";
+const MAX_TAGS = 4;
+const contactOf = (c?: Company) => c?.phone || c?.email || "—";
 
 export function ConnectionsContainer() {
   const { session } = useAuth();
@@ -35,7 +32,8 @@ export function ConnectionsContainer() {
   // suprotni tip firme: doktor traži laboratorije, laboratorija ordinacije
   // super admin vidi veze svih firmi, pa mu trebaju imena obe strane i nema "primljenih"/"poslatih"
   const isAdmin = session?.isSuperAdmin === true;
-  const counterpartType = isAdmin ? undefined : session?.type === "doktor" ? "proteticar" : "doktor";
+  const isDoctor = session?.type === "doktor";
+  const counterpartType = isAdmin ? undefined : isDoctor ? "proteticar" : "doktor";
   const myCompanyId = session?.companyId;
 
   // veze nose samo id-jeve, pa imena spajamo iz liste firme suprotnog tipa
@@ -48,8 +46,11 @@ export function ConnectionsContainer() {
   const searchQuery = useQuery({
     queryKey: ["companies", { type: counterpartType, name: debouncedSearch }],
     queryFn: () => searchCompanies({ type: counterpartType, name: debouncedSearch || undefined }),
-    enabled: !!session,
+    enabled: !!session && tab === "find",
   });
+  // nazivi usluga laboratorije (oznake na kartici) i broj zajedničkih radova — samo za ne-admina
+  const servicesQuery = useQuery({ queryKey: ["services", { technicianId: "" }], queryFn: () => listServices(), enabled: !!session && isDoctor });
+  const ordersQuery = useQuery({ queryKey: ["orders", { page: 1, pageSize: 100 }], queryFn: () => listOrders({ pageSize: 100 }), enabled: !!session && !isAdmin });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["connections"] });
   const respond = useMutation({
@@ -58,71 +59,150 @@ export function ConnectionsContainer() {
   });
   const send = useMutation({ mutationFn: sendConnectionRequest, onSuccess: invalidate });
 
-  const companiesById = new Map((companiesQuery.data?.companies ?? []).map((c) => [c.id, c]));
-  const connections = connectionsQuery.data?.connections ?? [];
-  const counterpartId = (c: Connection) => (session?.type === "doktor" ? c.technicianId : c.doctorId);
+  const companiesById = useMemo(() => new Map((companiesQuery.data?.companies ?? []).map((c) => [c.id, c])), [companiesQuery.data]);
+  const connections = useMemo(() => connectionsQuery.data?.connections ?? [], [connectionsQuery.data]);
+  const counterpartId = (c: Connection) => (isDoctor ? c.technicianId : c.doctorId);
   const isReceived = (c: Connection) => !isAdmin && c.senderId !== myCompanyId;
-  const connectionName = (c: Connection) =>
-    isAdmin
-      ? `${companiesById.get(c.doctorId)?.name ?? "…"} ↔ ${companiesById.get(c.technicianId)?.name ?? "…"}`
-      : (companiesById.get(counterpartId(c))?.name ?? "…");
+  const nameOf = (id: string) => companiesById.get(id)?.name ?? "…";
 
-  const filters: Record<Tab, (c: Connection) => boolean> = {
-    active: (c) => c.status === "prihvaceno",
-    received: (c) => c.status === "na_cekanju" && isReceived(c),
-    sent: (c) => c.status === "na_cekanju" && !isReceived(c),
-  };
-  const tabLabels: Record<Tab, string> = isAdmin
+  const tagsByTechnician = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const service of servicesQuery.data?.services ?? []) {
+      map.set(service.technicianId, [...(map.get(service.technicianId) ?? []), service.name]);
+    }
+    return map;
+  }, [servicesQuery.data]);
+  const worksByCounterpart = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const order of ordersQuery.data?.orders ?? []) {
+      const id = isDoctor ? order.technicianId : order.doctorId;
+      map.set(id, (map.get(id) ?? 0) + 1);
+    }
+    return map;
+  }, [ordersQuery.data, isDoctor]);
+
+  const filters: Record<Exclude<Tab, "find">, (c: Connection) => boolean> = isAdmin
+    ? {
+        active: (c) => c.status === "prihvaceno",
+        received: (c) => c.status === "odbijeno",
+        sent: (c) => c.status === "na_cekanju",
+      }
+    : {
+        active: (c) => c.status === "prihvaceno",
+        received: (c) => c.status === "na_cekanju" && isReceived(c),
+        sent: (c) => c.status === "na_cekanju" && !isReceived(c),
+      };
+  const labels = isAdmin
     ? { active: "Aktivne", received: "Odbijene", sent: "Na čekanju" }
-    : { active: "Aktivne", received: "Primljeni zahtevi", sent: "Poslati zahtevi" };
-  if (isAdmin) {
-    filters.received = (c) => c.status === "odbijeno";
-  }
+    : { active: "Moje veze", received: "Primljeni zahtevi", sent: "Poslati zahtevi" };
   const tabs = [
-    { value: "active", label: tabLabels.active },
-    { value: "received", label: tabLabels.received },
-    { value: "sent", label: tabLabels.sent },
-  ].map((t) => ({ ...t, count: connections.filter(filters[t.value as Tab]).length }));
+    ...(["active", "received", "sent"] as const).map((value) => ({
+      value,
+      label: labels[value],
+      count: connections.filter(filters[value]).length,
+      highlight: value === "received" && !isAdmin,
+    })),
+    { value: "find", label: isDoctor ? "Pronađi partnera (Baza laboratorija)" : "Pronađi partnera (Baza ordinacija)", count: null },
+  ];
 
-  const rows: ConnectionRow[] = connections.filter(filters[tab]).map((c) => {
-    const company = companiesById.get(counterpartId(c));
+  const toCard = (c: Connection): PartnerCard => {
+    const id = counterpartId(c);
+    const company = companiesById.get(id);
     return {
       id: c.id,
-      name: connectionName(c),
+      name: isAdmin ? `${nameOf(c.doctorId)} ↔ ${nameOf(c.technicianId)}` : nameOf(id),
+      typeLabel: isAdmin ? "Veza" : isDoctor ? "Zubotehnička laboratorija" : "Stomatološka ordinacija",
+      address: isAdmin ? "—" : company?.address || "—",
       contact: isAdmin ? "—" : contactOf(company),
+      tags: (tagsByTechnician.get(id) ?? []).slice(0, MAX_TAGS),
+      worksCount: isAdmin ? null : (worksByCounterpart.get(id) ?? 0),
       statusLabel: STATUS_LABELS[c.status],
-      statusTone: STATUS_TONES[c.status],
-      canRespond: c.status === "na_cekanju" && (isAdmin || isReceived(c)), // super admin odgovara na svaki zahtev
+      since: c.status === "prihvaceno" ? formatDate(c.updatedAt) : null,
+      gradient: mockHeaderGradient(id),
+      action:
+        c.status === "prihvaceno" && !isAdmin && isDoctor
+          ? { kind: "order", companyId: id }
+          : c.status === "na_cekanju"
+            ? { kind: "respond", canRespond: isAdmin || isReceived(c) }
+            : { kind: "status" },
     };
-  });
+  };
 
   const connectedIds = new Map(connections.map((c) => [counterpartId(c), c]));
-  const searchResults: CompanyRow[] = (searchQuery.data?.companies ?? []).map((company) => {
+  const toSearchCard = (company: Company): PartnerCard => {
     const existing = connectedIds.get(company.id);
     return {
       id: company.id,
       name: company.name,
+      typeLabel: company.type === "doktor" ? "Stomatološka ordinacija" : "Zubotehnička laboratorija",
+      address: company.address || "—",
       contact: contactOf(company),
-      disabledReason: existing ? `Veza postoji (${STATUS_LABELS[existing.status].toLowerCase()})` : null,
+      tags: (tagsByTechnician.get(company.id) ?? []).slice(0, MAX_TAGS),
+      worksCount: null,
+      statusLabel: "Nepovezan partner",
+      since: null,
+      gradient: mockHeaderGradient(company.id),
+      action: { kind: "send", disabledReason: existing ? `Veza postoji (${STATUS_LABELS[existing.status].toLowerCase()})` : null },
+    };
+  };
+
+  const needle = search.trim().toLowerCase();
+  const cards: PartnerCard[] =
+    tab === "find"
+      ? (searchQuery.data?.companies ?? []).map(toSearchCard)
+      : connections
+          .filter(filters[tab])
+          .map(toCard)
+          .filter((card) => !needle || card.name.toLowerCase().includes(needle) || card.tags.some((t) => t.toLowerCase().includes(needle)));
+
+  const receivedRequests = connections.filter((c) => !isAdmin && filters.received(c));
+  const pendingRequests: PendingRequest[] = receivedRequests.map((c) => {
+    const company = companiesById.get(counterpartId(c));
+    return {
+      id: c.id,
+      name: nameOf(counterpartId(c)),
+      address: company?.address || "—",
+      phone: contactOf(company),
+      receivedAgo: formatReceivedAgo(c.createdAt),
     };
   });
 
+  // KPI: sve iz pravih veza (odziv = prosek vremena od zahteva do odgovora)
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const accepted = connections.filter((c) => c.status === "prihvaceno");
+  const responded = connections.filter((c) => c.status !== "na_cekanju");
+  const averageMinutes = responded.length
+    ? responded.reduce((sum, c) => sum + (new Date(c.updatedAt).getTime() - new Date(c.createdAt).getTime()) / 60000, 0) / responded.length
+    : null;
+  const recommended = (companiesQuery.data?.companies ?? []).filter((company) => !connectedIds.has(company.id)).length;
+
   return (
     <ConnectionsView
-      counterpartPlural={isAdmin ? "Sve veze" : session?.type === "doktor" ? "Laboratorije" : "Ordinacije"}
+      kpis={{
+        active: accepted.length,
+        newThisMonth: accepted.filter((c) => new Date(c.updatedAt) >= monthStart).length,
+        pending: connections.filter((c) => c.status === "na_cekanju").length,
+        received: connections.filter((c) => c.status === "na_cekanju" && (isAdmin || isReceived(c))).length,
+        sent: connections.filter((c) => c.status === "na_cekanju" && !isAdmin && !isReceived(c)).length,
+        responseTime: averageMinutes === null ? null : formatResponseTime(averageMinutes),
+        recommended,
+      }}
+      counterpartLabel={isDoctor ? "laboratoriju" : "ordinaciju"}
       tabs={tabs}
       activeTab={tab}
       onTabChange={(value) => setTab(value as Tab)}
-      rows={rows}
-      onRespond={(id, status) => respond.mutate({ id, status })}
-      respondingId={respond.isPending ? (respond.variables?.id ?? null) : null}
       search={search}
       onSearchChange={setSearch}
-      searchResults={searchResults}
-      isSearching={searchQuery.isPending}
+      cards={cards}
+      pendingRequests={pendingRequests}
+      showPending={!isAdmin}
+      onRespond={(id, status) => respond.mutate({ id, status })}
+      respondingId={respond.isPending ? (respond.variables?.id ?? null) : null}
       onSendRequest={(companyId) => send.mutate(companyId)}
       sendingId={send.isPending ? (send.variables ?? null) : null}
-      isLoading={connectionsQuery.isPending}
+      isLoading={tab === "find" ? searchQuery.isPending : connectionsQuery.isPending}
       errorMessage={(connectionsQuery.error ?? respond.error ?? send.error)?.message}
     />
   );
