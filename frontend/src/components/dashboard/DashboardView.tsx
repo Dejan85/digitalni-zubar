@@ -487,7 +487,7 @@ function AlertActions({ alert }: { alert: AlertItem }) {
           href={alert.href}
           className="w-full rounded-lg bg-surface-container-lowest py-1.5 text-center font-title-sm text-title-sm font-semibold text-on-surface shadow-sm transition-colors hover:bg-surface-container"
         >
-          Pregledaj fotografije dorade
+          Pregledaj fotografije dorade (3){/* MOCK: broj fotografija, domen nema fotografije */}
         </Link>
       </div>
     );

@@ -204,12 +204,12 @@ export function PatientsList(props: PatientsListProps) {
         >
           <div className="mt-4 flex items-center gap-1.5 font-label-md text-label-md text-on-surface-variant">
             <Icon name="schedule" className="text-[16px] text-primary" />
-            <span className="font-medium text-on-surface">{kpis.dueThisWeek} sa rokom ove nedelje</span>
+            <span className="font-medium text-on-surface">{kpis.dueThisWeek} zakazano za ovu nedelju</span>
           </div>
         </KpiCard>
         <KpiCard
           label="Arhivirani kartoni"
-          value="—"
+          value="325" /* MOCK: domen nema arhivu kartona */
           valueClass="text-secondary"
           icon="folder_special"
           iconClass="bg-surface-container-high text-secondary"
@@ -376,7 +376,7 @@ export function PatientsList(props: PatientsListProps) {
                     {row.work ? (
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <span className="whitespace-nowrap font-title-sm text-title-sm text-on-surface">
+                          <span className="font-title-sm text-title-sm text-on-surface">
                             {row.work.orderLabel}
                           </span>
                           <StatusBadge label={row.work.statusLabel} tone={row.work.statusTone} />
@@ -388,11 +388,11 @@ export function PatientsList(props: PatientsListProps) {
                     )}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className="whitespace-nowrap rounded-full bg-surface-container px-2 py-0.5 font-title-sm text-title-sm text-on-surface">
+                    <span className="rounded-full bg-surface-container px-2 py-0.5 font-title-sm text-title-sm text-on-surface">
                       {row.ordersCountText}
                     </span>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 font-body-sm text-body-sm text-on-surface-variant">
+                  <td className="px-4 py-3 font-body-sm text-body-sm text-on-surface-variant">
                     {row.lastEntry}
                   </td>
                   <td className="px-4 py-3 text-right">

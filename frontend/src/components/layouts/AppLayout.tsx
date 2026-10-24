@@ -63,9 +63,8 @@ export function AppLayout({
       >
         <div className="flex flex-col">
           <div className="flex h-[68px] items-center gap-space-sm bg-surface-container-low/50 px-space-md">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-on-primary">
-              <Icon name="dentistry" className="text-[22px]" />
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element -- logo iz dizajna (spoljni URL) */}
+            <img alt="Digitalni Zubar Logo" className="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1IMYq75mm5BzEJhB3g3oM0X1xoLYwnPhE7402oxEPBFjuX6og6YLIsesivnjVD3kDbLHu90fvek1XS6qA8yTCA5BQPIjmXZvdR3Uw0LWeWyC2_uLcULvs8FKMqHZ1Ggm_RbgT4ZtGD4eGxK1aZyzaHUaqOKJCYrwMJSPdmoh_6SHmWCh91gVP-7ErViVTqnjGBi7PiX8AhiGTeSapvZ8jJmK_3WeVdAsSwP9lamu7u3xwYU27xQEW" />
             <div className="flex min-w-0 flex-col">
               <span className="truncate font-headline-sm text-headline-sm leading-tight text-on-surface">
                 Digitalni Zubar
@@ -117,11 +116,10 @@ export function AppLayout({
               <span className="rounded-full bg-tertiary-fixed px-2 py-0.5 font-label-sm text-label-sm font-semibold tracking-wide text-on-tertiary-fixed">
                 {roleLabel}
               </span>
-              {isSuperAdmin && (
-                <span className="rounded bg-surface-variant px-1.5 py-0.5 font-label-sm text-label-sm font-bold uppercase text-on-surface-variant">
-                  Admin
-                </span>
-              )}
+              {/* MOCK: dizajn uvek prikazuje ulogu "Admin" (domen nema uloge unutar firme) */}
+              <span className="rounded bg-surface-variant px-1.5 py-0.5 font-label-sm text-label-sm font-bold uppercase text-on-surface-variant">
+                {isSuperAdmin ? "Super admin" : "Admin"}
+              </span>
             </div>
           </div>
           <button
@@ -187,12 +185,19 @@ export function AppLayout({
               )}
             </button>
             <div className="hidden h-6 w-px bg-surface-variant sm:block" />
-            <div className="hidden items-center gap-2 rounded-lg bg-surface-container-low px-space-sm py-1.5 text-on-surface sm:flex">
+            {/* MOCK: prekidač firme/uloge nije u domenu (disabled) */}
+            <button
+              type="button"
+              disabled
+              title="Uskoro"
+              className="hidden items-center gap-2 rounded-lg bg-surface-container-low px-space-sm py-1.5 text-on-surface transition-colors hover:bg-surface-container sm:flex"
+            >
               <Icon name="swap_horiz" className="text-[18px] text-primary" />
               <span className="max-w-[200px] truncate text-left font-label-md text-label-md font-medium">
                 {companyName ?? "…"} ({roleLabel})
               </span>
-            </div>
+              <Icon name="expand_more" className="text-[16px] text-on-surface-variant" />
+            </button>
             <button
               type="button"
               onClick={onToggleTheme}

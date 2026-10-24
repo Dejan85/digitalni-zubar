@@ -5,6 +5,7 @@ import type { UseFormRegisterReturn } from "react-hook-form";
 import { Icon } from "@/components/ui/Icon";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { StatusTone } from "@/lib/order-status";
+import { MOCK_SHADE_PHOTOS } from "@/lib/orders-mock";
 import type { TimelinePhase } from "@/lib/order-timeline";
 
 import { ImpressionUpload } from "./ImpressionUpload";
@@ -402,12 +403,11 @@ export function OrderDetail(props: OrderDetailProps) {
               <div className="flex min-w-0 flex-col">
                 <div className="flex items-center gap-2">
                   <h4 className="truncate font-title-md text-title-md font-bold text-on-surface">{lab.name}</h4>
-                  {lab.isVerified && (
+                  {/* MOCK: dizajn uvek prikazuje "Verifikovan Lab" (verifikacija firme nije u domenu) */}
                     <span className="inline-flex items-center gap-0.5 rounded-full bg-primary-fixed px-2 py-0.5 font-label-sm text-label-sm font-bold text-on-primary-fixed">
                       <Icon name="verified" className="text-[12px]" />
                       Verifikovan Lab
                     </span>
-                  )}
                 </div>
                 <p className="mt-0.5 flex items-center gap-1.5 font-body-sm text-body-sm text-on-surface-variant">
                   <Icon name="location_on" className="text-[14px]" />
@@ -615,9 +615,29 @@ export function OrderDetail(props: OrderDetailProps) {
                   <Icon name="photo_camera" className="text-[16px] text-primary" />
                   Priložene fotografije pacijenta sa ključem boja (VITA shade guide)
                 </span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">{MOCK_SHADE_PHOTOS.length} priložene slike</span>
               </div>
-              <div className="flex h-24 items-center justify-center rounded-xl bg-surface-container text-center font-body-sm text-body-sm text-on-surface-variant">
-                Fotografije još nisu podržane (Uskoro)
+              {/* MOCK: fotografije iz dizajna, backend nema upload fotografija (documentation/REDIZAJN_MOCK.md §3) */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {MOCK_SHADE_PHOTOS.map((photo) => (
+                  <div key={photo.file} className="group relative h-44 overflow-hidden rounded-xl bg-surface-container shadow-sm">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- MOCK fotografija iz dizajna, spoljni URL */}
+                    <img
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      alt={photo.alt}
+                      src={photo.url}
+                    />
+                    <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-on-surface/80 via-transparent to-transparent p-3">
+                      <div>
+                        <span className="block font-title-sm text-title-sm font-medium text-white">{photo.title}</span>
+                        <span className="font-data-mono text-[11px] text-surface-container">{photo.file}</span>
+                      </div>
+                      <span className="flex size-7 items-center justify-center rounded-lg bg-white/20 text-white backdrop-blur">
+                        <Icon name="zoom_in" className="text-[16px]" />
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

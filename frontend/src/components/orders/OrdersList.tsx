@@ -63,7 +63,7 @@ const AVATAR = {
   error: "bg-error-container text-on-error-container",
 };
 
-const HEAD = "whitespace-nowrap px-4 py-3.5 font-semibold";
+const HEAD = "px-4 py-3.5 font-semibold";
 
 const DEADLINE_HINT: Record<OrderListRow["deadlineTone"], string> = {
   overdue: "text-error font-semibold",
@@ -209,7 +209,7 @@ export function OrdersList(props: OrdersListProps) {
               value={props.search}
               onChange={(e) => props.onSearchChange(e.target.value)}
               aria-label="Pretraga porudžbina"
-              placeholder={`Pretraži po broju (#), pacijentu, ${props.partnerLabel.toLowerCase()}...`}
+              placeholder={`Pretraži po broju (#), pacijentu, ${props.partnerLabel === "Laboratorija" ? "zubotehničkoj laboratoriji" : "ordinaciji"}...`}
               className="w-full rounded-xl bg-surface-container-low py-2 pl-10 pr-4 font-body-md text-body-md text-on-surface shadow-sm outline-none transition-all placeholder:text-on-surface-variant focus:bg-surface-container-lowest"
             />
           </div>
@@ -413,7 +413,7 @@ export function OrdersList(props: OrdersListProps) {
                       </span>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3.5">
+                  <td className="px-4 py-3.5">
                     {row.mock.impression.kind === "digital" ? (
                       <span className="inline-flex items-center gap-1.5 rounded-md bg-tertiary-fixed/30 px-2.5 py-1 font-label-sm text-label-sm font-semibold text-on-tertiary-fixed-variant">
                         <Icon name="3d_rotation" className="text-[16px] text-tertiary" />
@@ -426,10 +426,10 @@ export function OrdersList(props: OrdersListProps) {
                       </span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3.5">
+                  <td className="px-4 py-3.5">
                     <StatusBadge label={row.statusLabel} tone={row.statusTone} />
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3.5">
+                  <td className="px-4 py-3.5">
                     <div className="flex flex-col">
                       <span
                         className={`font-title-sm text-title-sm font-medium ${row.deadlineTone === "overdue" ? "text-error" : ""}`}
@@ -443,7 +443,7 @@ export function OrdersList(props: OrdersListProps) {
                       )}
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3.5">
+                  <td className="px-4 py-3.5">
                     <span className="font-body-sm text-body-sm text-on-surface-variant">{row.createdAt}</span>
                   </td>
                   <td className="px-4 py-3.5 text-right">

@@ -38,7 +38,7 @@ export function getNavItems(type: CompanyType): NavItem[] {
 }
 
 export function getCompanyTypeLabel(type: CompanyType): string {
-  return type === "doktor" ? "Ordinacija" : "Laboratorija";
+  return type === "doktor" ? "Doktor" : "Protetičar";
 }
 
 // "/orders/12" je aktivna stavka "/orders"

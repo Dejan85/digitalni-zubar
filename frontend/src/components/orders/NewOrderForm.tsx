@@ -10,6 +10,7 @@ import {
   MOCK_FRONT_TEETH,
   MOCK_LAB_LEAD_TIME,
   MOCK_LOWER_TEETH,
+  MOCK_ABUTMENT_OPTIONS,
   MOCK_SPEC_OPTIONS,
   MOCK_UPPER_TEETH,
   type MockTooth,
@@ -100,7 +101,7 @@ function Header() {
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-data-mono text-label-sm">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            BROJ NALOGA: DODELJUJE SE PRI SLANJU
+            BROJ NALOGA: #N-2024-0482
           </span>
         </div>
       </div>
@@ -515,11 +516,16 @@ export function NewOrderForm(props: NewOrderFormProps) {
                   {/* MOCK: tehnički parametri nemaju polja u šemi stavke */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" title="Uskoro">
                     {(
-                      [
-                        ["Boja (VITA ključ)", MOCK_SPEC_OPTIONS.shade],
-                        ["Translucencija", MOCK_SPEC_OPTIONS.translucency],
-                        ["Anatomski oblik", MOCK_SPEC_OPTIONS.shape],
-                      ] as const
+                      (props.itemTitles[i] ?? "").toLowerCase().includes("abutment")
+                        ? ([
+                            ["Subgingivalni nivo ruba", MOCK_ABUTMENT_OPTIONS.margin],
+                            ["Profil izranjanja (Emergence)", MOCK_ABUTMENT_OPTIONS.emergence],
+                          ] as const)
+                        : ([
+                            ["Boja (VITA ključ)", MOCK_SPEC_OPTIONS.shade],
+                            ["Translucencija", MOCK_SPEC_OPTIONS.translucency],
+                            ["Anatomski oblik", MOCK_SPEC_OPTIONS.shape],
+                          ] as const)
                     ).map(([label, options]) => (
                       <div key={label} className="flex flex-col gap-1">
                         <span className={LABEL_CLASS}>{label}</span>
@@ -574,14 +580,14 @@ export function NewOrderForm(props: NewOrderFormProps) {
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-title-sm text-title-sm font-semibold transition-colors shadow-sm"
             >
               <Icon name="arrow_back" className="text-[18px]" />
-              {hasPatient ? "Nazad na pacijenta" : "Nazad na porudžbine"}
+              Nazad na pacijenta
             </Link>
             <button
               type="submit"
               disabled={props.isSubmitting}
               className="inline-flex items-center gap-2 px-8 py-3 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-title-sm text-title-sm font-bold shadow-md transition-all hover:shadow-lg disabled:opacity-60"
             >
-              {props.isSubmitting ? "Slanje..." : "Pošalji porudžbinu"}
+              {props.isSubmitting ? "Slanje..." : "Nastavi na Otisak (Korak 4)"}
               <Icon name="arrow_forward" className="text-[20px]" />
             </button>
           </div>

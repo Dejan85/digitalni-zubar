@@ -190,6 +190,12 @@ export const MOCK_SPEC_OPTIONS = {
   shape: ["Anatomski pun profil", "Redukcija za fasetiranje", "Minimalna preparacija"],
 };
 
+// MOCK: za abutment stavke dizajn prikazuje druga tehnička polja (nivo ruba, profil izranjanja)
+export const MOCK_ABUTMENT_OPTIONS = {
+  margin: ["0.5 mm subgingivalno", "1.0 mm subgingivalno (Estetska zona)", "Equigingivalno (U nivou gingive)", "Supragingivalno"],
+  emergence: ["Konkavan (Preporučen)", "Ravan", "Konveksan"],
+};
+
 export const MOCK_LAB_LEAD_TIME = "Standardni rok izrade: 3-5 radnih dana";
 
 // ⚠ MOCK — ekran "Pacijenti i medicinski kartoni" (dizajn/pacijenti i medicinski kartoni).
@@ -312,3 +318,9 @@ export function mockServiceExtras(service: { id: string; name: string }): MockSe
 
 // polja forme nove usluge koja backend nema — prikazuju se onemogućena
 export const MOCK_NEW_SERVICE = { code: "FP-15" };
+
+// MOCK: fotografije pacijenta sa ključem boje (dizajn dizajn/porudzbina) — backend nema upload fotografija
+export const MOCK_SHADE_PHOTOS = [
+  { url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCQcehVwFpkYwM2lOzcEVKJ78IpqoKARgo_mKmQSzeJJyIJMcTIDQXAT0SYkyHxjaqbKE5ppCAvt-mzbKaBh1stTRRNyUAU0xSQAmY6YYL8H1XHpJHE4SyHhKbZ-7ar0PmaoXwTY0cATKcbJInEvSNMMkFuYr0PwFiB9KKqH0fhENIMEAY8AtzumQlYmMF1ne6om7_IUQ30MigSXEWjUTWvjM-RDCI97lFNbnJd56KF08zroNOlTT3w", title: "Ključ boje frontalno (A2)", file: "Macro_Shade_01.jpg · 4.2 MB", alt: "Makro fotografija premolara sa VITA ključem boje A2" },
+  { url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCibbsSrZNPGzA-CF6UY4WyDu0flYzPfCtezO80FYPt6IfdzzAANIeO7EHhzgZEKjaRJaE2P_ci5d4MqfMVZDyKIffzRTJ2skcmrXVNT8344q-7ns5ogl1Vqe2OLGKABTGkL6QWrWulpw9r1nU9Bi0TNPbldxvpC7EW86wIGZktVKrzfObYrrnOJaKtL46S1SiYfVPQYPiqMptmyIYBPzUMiDI57-FhAi8NfjGAHUaBs14qqLUWiENb", title: "Profil gingive & okluzija", file: "Gingival_Profile_02.jpg · 3.8 MB", alt: "Intraoralna fotografija profila gingive i okluzije" },
+];

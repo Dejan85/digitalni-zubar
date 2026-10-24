@@ -143,7 +143,7 @@ export function ServicesView(props: ServicesViewProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-space-md sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Ukupno usluga" icon="layers" iconClass="text-primary" subClass="font-medium text-primary" sub="Sve aktivne">
+        <KpiCard label="Ukupno usluga" icon="layers" iconClass="text-primary" subClass="font-medium text-primary" sub="100% sinhronizovano">
           {kpis.total}
         </KpiCard>
         <KpiCard
@@ -151,20 +151,20 @@ export function ServicesView(props: ServicesViewProps) {
           icon="timelapse"
           iconClass="text-tertiary"
           subClass="text-secondary"
-          sub="Okvirno (nije u bazi)"
+          sub="Brzi STL prioriteti"
         >
-          {kpis.averageLeadDays.toLocaleString("sr-Latn-RS")} <span className="text-headline-sm font-normal text-on-surface-variant">dana</span>
+          {kpis.averageLeadDays.toFixed(1)} <span className="text-headline-sm font-normal text-on-surface-variant">dana</span>
         </KpiCard>
         <KpiCard
           label="Digitalni STL radovi"
           icon="view_in_ar"
           iconClass="text-primary"
           subClass="text-primary"
-          sub="Okvirno (nije u bazi)"
+          sub="+14% u odnosu na Q3"
         >
           {kpis.digitalPercent}%
         </KpiCard>
-        <KpiCard label={props.connectionsLabel} icon="domain" iconClass="text-secondary" subClass="text-secondary" sub="Aktivne veze">
+        <KpiCard label={props.connectionsLabel} icon="domain" iconClass="text-secondary" subClass="text-secondary" sub="Aktivni ugovori">
           {props.connectionsCount ?? "—"}
         </KpiCard>
       </div>

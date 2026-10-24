@@ -80,28 +80,21 @@ export function ConnectionsContainer() {
     return map;
   }, [ordersQuery.data, isDoctor]);
 
-  const filters: Record<Exclude<Tab, "find">, (c: Connection) => boolean> = isAdmin
-    ? {
-        active: (c) => c.status === "prihvaceno",
-        received: (c) => c.status === "odbijeno",
-        sent: (c) => c.status === "na_cekanju",
-      }
-    : {
-        active: (c) => c.status === "prihvaceno",
-        received: (c) => c.status === "na_cekanju" && isReceived(c),
-        sent: (c) => c.status === "na_cekanju" && !isReceived(c),
-      };
-  const labels = isAdmin
-    ? { active: "Aktivne", received: "Odbijene", sent: "Na čekanju" }
-    : { active: "Moje veze", received: "Primljeni zahtevi", sent: "Poslati zahtevi" };
+  // super admin odgovara na svaki zahtev na čekanju, pa su svi "primljeni"; "poslatih" nema (odbijene veze nemaju tab u dizajnu)
+  const filters: Record<Exclude<Tab, "find">, (c: Connection) => boolean> = {
+    active: (c) => c.status === "prihvaceno",
+    received: (c) => c.status === "na_cekanju" && (isAdmin || isReceived(c)),
+    sent: (c) => c.status === "na_cekanju" && !isAdmin && !isReceived(c),
+  };
+  const labels = { active: "Moje veze", received: "Primljeni zahtevi", sent: "Poslati zahtevi" };
   const tabs = [
     ...(["active", "received", "sent"] as const).map((value) => ({
       value,
       label: labels[value],
       count: connections.filter(filters[value]).length,
-      highlight: value === "received" && !isAdmin,
+      highlight: value === "received",
     })),
-    { value: "find", label: isDoctor ? "Pronađi partnera (Baza laboratorija)" : "Pronađi partnera (Baza ordinacija)", count: null },
+    { value: "find", label: isDoctor || isAdmin ? "Pronađi partnera (Baza laboratorija)" : "Pronađi partnera (Baza ordinacija)", count: null },
   ];
 
   // MOCK polja kartice (dizajn ih ima, backend ne); broj radova je stvaran kad postoji
@@ -168,14 +161,14 @@ export function ConnectionsContainer() {
           .map(toCard)
           .filter((card) => !needle || card.name.toLowerCase().includes(needle) || card.tags.some((t) => t.toLowerCase().includes(needle)));
 
-  const receivedRequests = connections.filter((c) => !isAdmin && filters.received(c));
+  const receivedRequests = connections.filter(filters.received);
   const pendingRequests: PendingRequest[] = receivedRequests.map((c) => {
     const company = companiesById.get(counterpartId(c));
     return {
       id: c.id,
-      name: nameOf(counterpartId(c)),
-      address: company?.address || "—",
-      phone: contactOf(company),
+      name: isAdmin ? `${nameOf(c.doctorId)} ↔ ${nameOf(c.technicianId)}` : nameOf(counterpartId(c)),
+      address: isAdmin ? "—" : company?.address || "—",
+      phone: isAdmin ? "—" : contactOf(company),
       receivedAgo: formatReceivedAgo(c.createdAt),
       contactPerson: mockPartnerExtras(counterpartId(c)).contactPerson,
       quote: mockPartnerExtras(counterpartId(c)).requestQuote,
@@ -209,7 +202,7 @@ export function ConnectionsContainer() {
       onSearchChange={setSearch}
       cards={cards}
       pendingRequests={pendingRequests}
-      showPending={!isAdmin}
+      showPending
       onRespond={(id, status) => respond.mutate({ id, status })}
       respondingId={respond.isPending ? (respond.variables?.id ?? null) : null}
       onSendRequest={(companyId) => send.mutate(companyId)}
