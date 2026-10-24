@@ -324,3 +324,137 @@ export const MOCK_SHADE_PHOTOS = [
   { url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCQcehVwFpkYwM2lOzcEVKJ78IpqoKARgo_mKmQSzeJJyIJMcTIDQXAT0SYkyHxjaqbKE5ppCAvt-mzbKaBh1stTRRNyUAU0xSQAmY6YYL8H1XHpJHE4SyHhKbZ-7ar0PmaoXwTY0cATKcbJInEvSNMMkFuYr0PwFiB9KKqH0fhENIMEAY8AtzumQlYmMF1ne6om7_IUQ30MigSXEWjUTWvjM-RDCI97lFNbnJd56KF08zroNOlTT3w", title: "Ključ boje frontalno (A2)", file: "Macro_Shade_01.jpg · 4.2 MB", alt: "Makro fotografija premolara sa VITA ključem boje A2" },
   { url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCibbsSrZNPGzA-CF6UY4WyDu0flYzPfCtezO80FYPt6IfdzzAANIeO7EHhzgZEKjaRJaE2P_ci5d4MqfMVZDyKIffzRTJ2skcmrXVNT8344q-7ns5ogl1Vqe2OLGKABTGkL6QWrWulpw9r1nU9Bi0TNPbldxvpC7EW86wIGZktVKrzfObYrrnOJaKtL46S1SiYfVPQYPiqMptmyIYBPzUMiDI57-FhAi8NfjGAHUaBs14qqLUWiENb", title: "Profil gingive & okluzija", file: "Gingival_Profile_02.jpg · 3.8 MB", alt: "Intraoralna fotografija profila gingive i okluzije" },
 ];
+
+// ⚠ MOCK — ekran "Detalji pacijenta" (dizajn/detalji pacijenta). Backend zna samo ime, prezime, datum rođenja i pol pacijenta
+// (+ njegove porudžbine i beleške). Sve ostalo sa ekrana — adresa, RFZO, medicinska upozorenja, 3D skenovi, odontogram,
+// garantni listovi, licenca doktora, plaćanje i SLA — je izmišljeno i isto za svakog pacijenta (osim adrese i RFZO broja,
+// koji se računaju iz ID-a). Spisak: documentation/REDIZAJN_MOCK.md §13.
+const PATIENT_ADDRESSES = [
+  "Cara Dušana 44, Beograd (Stari Grad)",
+  "Bulevar oslobođenja 12, Novi Sad",
+  "Knez Mihailova 8, Beograd (Stari Grad)",
+  "Nikole Pašića 21, Niš",
+  "Kralja Petra 5, Kragujevac",
+];
+
+export function mockPatientDetailAddress(patientId: string) {
+  const h = hash(`address-${patientId}`);
+  return { address: PATIENT_ADDRESSES[h % PATIENT_ADDRESSES.length], rfzo: String(900_000_000 + ((h >>> 3) % 99_999_999)) };
+}
+
+export const MOCK_PATIENT_ALERTS: { kind: "allergy" | "warning" | "info"; text: string; icon?: string }[] = [
+  { kind: "allergy", text: "ALERGIJA: Penicilin i derivati" },
+  { kind: "warning", icon: "dentistry", text: "Nizak prag bola — Koristiti anestetik bez adrenalina (Mepivakain)" },
+  { kind: "info", icon: "shield", text: "Bruksizam (noćno škripanje) — Obavezna okluzalna stabilizacija" },
+];
+
+export const MOCK_PATIENT_KPI = {
+  totalValue: "86.400",
+  paidText: "Plaćeno 100%",
+  invoicesText: "3 fakturisana računa",
+  labCity: "Beograd (Vračar)",
+  labSla: "Aktivna B2B veza • SLA 48h",
+  lastIntervention: "Otisak & brušenje (14, 15)",
+  nextAppointment: "27. Oktobar u 11:30",
+};
+
+export const MOCK_PATIENT_TAB_COUNTS = { scans: 6, certificates: 2 };
+
+export const MOCK_PATIENT_WORK = {
+  teeth: ["14", "15"],
+  teethLabel: "(Premolari)",
+  shade: "VITA A2",
+  shadeColor: "#f6ebd7",
+  bleach: "Bleach 0%",
+  technician: "Tehničar: Marko V. (DentalArt)",
+  messagesLabel: "Poruka laboratoriji (2)",
+  milling: "CNC Glodanje",
+  steps: [
+    "Otisak i CAD dizajn (Završeno)",
+    "Verifikacija rubova (Završeno)",
+    "CNC glodanje u toku",
+    "Sinterovanje & Glaziranje",
+    "Isporuka ordinaciji",
+  ],
+};
+
+export const MOCK_PATIENT_HISTORY_PRICES = [32000, 38400, 16000, 24000, 45000];
+
+export type MockToothState = "active" | "finished" | "implant";
+
+const quadrantTeeth = (q: number, reverse: boolean) => {
+  const teeth = Array.from({ length: 8 }, (_, i) => `${q}${i + 1}`);
+  return reverse ? teeth.reverse() : teeth;
+};
+
+export const MOCK_ODONTOGRAM = {
+  upper: [...quadrantTeeth(1, true), ...quadrantTeeth(2, false)],
+  lower: [...quadrantTeeth(4, true), ...quadrantTeeth(3, false)],
+  states: {
+    "15": { state: "active", title: "Zub 15: U izradi krunica" },
+    "14": { state: "active", title: "Zub 14: U izradi krunica" },
+    "21": { state: "finished", title: "Zub 21: E-max faseta (Završeno)" },
+    "22": { state: "finished", title: "Zub 22: E-max faseta (Završeno)" },
+    "46": { state: "implant", title: "Zub 46: Straumann implantat & krunica" },
+  } as Record<string, { state: MockToothState; title: string }>,
+  legend: [
+    { state: "active" as const, label: "U izradi (14, 15)" },
+    { state: "finished" as const, label: "E-max fasete (21, 22)" },
+    { state: "implant" as const, label: "Implantat (46)" },
+    { state: "healthy" as const, label: "Zdravi / Sanirani zubi" },
+  ],
+};
+
+export const MOCK_PATIENT_CERTIFICATES = [
+  { title: "VITA Master Sertifikat Zirkon", subtitle: "Nalog #118 • Garancija 5 godina", serial: "LOT disk: #CRT-892110" },
+  { title: "Straumann® Pasoš Implantata", subtitle: "Nalog #094 • Doživotna garancija", serial: "Serial: #STM-4819-BLX" },
+];
+
+export const MOCK_PATIENT_SCANS = {
+  featured: [
+    {
+      badge: "3Shape TRIOS",
+      size: "42.4 MB",
+      title: "Gornja vilica - Preparacija 14, 15",
+      subtitle: "Snimljeno: 24.10.2025. • HD mrežasta rezolucija",
+      icon: "play_apps",
+      image:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuDsoYRnkEmfxSFKxZv5aArqdkWe4Yl1K7eB9Ozsl9IgZl8xiaDj5304nIC_crxbTxkLI6DH5Bob0ATiHKS2mmAxGF0hu6zQ_7zUm7tFZc3mfWRvlkeXc7cw4f46iwKRKvckNrEPc8DZNHCn1JRXGGVaoOgF0iZBfpQNhtCWnasuK-_LyziZBl8ZV1U8MASX8JMWCcIyK9SVRtb0oxg2CbZ2FBzp-CHpVhjblUdnd2s-FrC8MmyAOwRm",
+      imageAlt:
+        "High resolution 3D wireframe render of maxillary dental arch dental preparation with subgingival margins on teeth 14 and 15, clinical dental CAD CAM software viewport in teal and slate blue monochrome style",
+      dotClass: "bg-primary-fixed",
+      tag: "Margine definisane",
+      viewLabel: "3D WebGL Pregled",
+      primary: true,
+    },
+    {
+      badge: "Antagonisti",
+      size: "38.1 MB",
+      title: "Donja vilica - Naspramni zubi",
+      subtitle: "Snimljeno: 24.10.2025. • Pun dentalni luk",
+      icon: "model_training",
+      image:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuBRInB8vMxL0nwePxrmYeq9PF-6dGglHjeww40kfQTmR4ffCuHc4ELqOyTAxQZY6K2HagZVivDnx8iNCnjl7kGTzqcb1gZVfDxVffvIkYtV7weeSXTbmHxX-G9L0eel7OA-P0uQrSYqI5vuO5dWk3NBQa4e7qGrvklKb_Yg-MSHQ9xU6oK9tTy9gGUSRomLsFgzS4uRKTWXTorsncXn9q-8e-Em6ip29T3rndj1H5N_MYt0sp8qv8pB",
+      imageAlt:
+        "Mandibular lower jaw 3D polygonal scan visualization with occlusal topography points and dental contact map in soft clinical slate tones",
+      dotClass: "bg-secondary-fixed",
+      tag: "Okluzija OK",
+      viewLabel: "3D Pregled",
+      primary: false,
+    },
+  ],
+  files: [
+    { icon: "join_inner", iconClass: "text-primary-container", title: "Registrat zagriza / Bukalni sken", size: "15.2 MB", meta: "PLY (Fotorealistična boja)", metaClass: "text-tertiary font-semibold" },
+    { icon: "folder_zip", iconClass: "text-on-surface-variant", title: "Kontrolni sken pre preparacije", size: "36.0 MB", meta: "Maj 2025 (Arhivski model)", metaClass: "" },
+  ],
+};
+
+export const MOCK_PATIENT_DOCTOR = {
+  specialty: "Specijalista stomatološke protetike",
+  license: "Licenca SLK: #104928",
+  visitDate: "27.10.",
+  notes: [
+    "Provera pasivnog naleganja cirkonijumskog mosta (14, 15) na individualnim abatmentima pre definitivnog cementiranja.",
+    "Provera kontakata u lateralnim kretnjama i okluzalni klirens zbog bruksizma.",
+  ],
+};
