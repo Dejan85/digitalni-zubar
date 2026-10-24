@@ -14,17 +14,18 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 
 export const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
 
-export type StatusTone = "neutral" | "info" | "success" | "danger";
+// opšti tonovi (veze i sl.) + sam status porudžbine: svaki status ima svoj par boja u globals.css (dizajn/DESIGN.md)
+export type StatusTone = "neutral" | "info" | "success" | "danger" | OrderStatus;
 
 export const ORDER_STATUS_TONES: Record<OrderStatus, StatusTone> = {
-  primljena: "neutral",
-  potvrdjena: "info",
-  u_izradi: "info",
-  poslata: "info",
-  isporucena: "success",
-  otkazana: "danger",
-  odbijena: "danger",
-  vracena_na_doradu: "danger",
+  primljena: "primljena",
+  potvrdjena: "potvrdjena",
+  u_izradi: "u_izradi",
+  poslata: "poslata",
+  isporucena: "isporucena",
+  otkazana: "otkazana",
+  odbijena: "odbijena",
+  vracena_na_doradu: "vracena_na_doradu",
 };
 
 // ogledalo backend pravila (routes/porudzbine.ts): dozvoljene tranzicije i ko sme da postavi koji status

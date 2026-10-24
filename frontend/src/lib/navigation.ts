@@ -1,25 +1,35 @@
 import type { CompanyType } from "./types";
 
+// značka pored stavke menija (stil iz dizajn/code.html): "solid" = broj u punom pilu, "muted"/"mutedHigh" = oznaka uloge, "info" = novo
+export type NavBadgeTone = "solid" | "muted" | "mutedHigh" | "info";
+
+export interface NavBadge {
+  text: string;
+  tone: NavBadgeTone;
+}
+
 export interface NavItem {
   href: string;
   label: string;
+  icon: string; // naziv ikone iz Material Symbols
+  badge?: NavBadge; // statična značka; dinamične (brojevi) dodaje container
 }
 
 const DOCTOR_NAV: NavItem[] = [
-  { href: "/dashboard", label: "Pregled" },
-  { href: "/orders", label: "Porudžbine" },
-  { href: "/patients", label: "Pacijenti" },
-  { href: "/services", label: "Katalog usluga" },
-  { href: "/connections", label: "Laboratorije" },
-  { href: "/profile", label: "Profil ordinacije" },
+  { href: "/dashboard", label: "Kontrolna tabla", icon: "grid_view" },
+  { href: "/orders", label: "Porudžbine", icon: "inventory_2" },
+  { href: "/patients", label: "Pacijenti", icon: "groups", badge: { text: "Dr", tone: "muted" } },
+  { href: "/services", label: "Usluge", icon: "medical_services", badge: { text: "Lab", tone: "mutedHigh" } },
+  { href: "/connections", label: "Veze", icon: "hub" },
+  { href: "/profile", label: "Profil", icon: "settings" },
 ];
 
 const LAB_NAV: NavItem[] = [
-  { href: "/dashboard", label: "Pregled" },
-  { href: "/orders", label: "Porudžbine" },
-  { href: "/services", label: "Moje usluge" },
-  { href: "/connections", label: "Ordinacije" },
-  { href: "/profile", label: "Profil laboratorije" },
+  { href: "/dashboard", label: "Kontrolna tabla", icon: "grid_view" },
+  { href: "/orders", label: "Porudžbine", icon: "inventory_2" },
+  { href: "/services", label: "Usluge", icon: "medical_services", badge: { text: "Lab", tone: "mutedHigh" } },
+  { href: "/connections", label: "Veze", icon: "hub" },
+  { href: "/profile", label: "Profil", icon: "settings" },
 ];
 
 // meni zavisi od tipa firme (doktor vs. protetičar)

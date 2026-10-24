@@ -18,3 +18,6 @@ export function toDateInput(iso: string): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
+
+// ID porudžbine je UUID; za prikaz u tabelama i karticama dovoljan je prefiks (npr. #6e1a64a1)
+export const shortId = (id: string): string => id.slice(0, 8);

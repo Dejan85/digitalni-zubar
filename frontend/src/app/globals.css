@@ -1,64 +1,304 @@
 @import "tailwindcss";
 
 /*
- * Tokeni teme — jedino mesto gde su "sirove" boje. Komponente koriste samo tokene (bg-primary, text-primary-dark...),
- * nikad bg-green-600, pa ThemePicker (components/dev) menja ove CSS promenljive uzivo bez izmene koda.
- * Vrednosti su procena sa referentnog dizajna; menjaju se ovde ili preko pickera u devu.
+ * Tokeni teme — jedino mesto gde su "sirove" boje. Komponente koriste samo tokene (bg-primary, text-on-surface...).
+ * Redizajn (grana `redizajn`): paleta, tipografija i razmaci su 1:1 iz tailwind.config u dizajn/code.html
+ * (Material-stil imena: surface-container-low, on-surface-variant, primary-container...), pa se markup iz
+ * code.html prenosi bez menjanja klasa. Dark vrednosti su naše (mock ima samo svetlu temu).
  */
 :root {
-  --primary: #16a34a; /* ziva zelena: dugmad, akcenti, aktivne stavke */
-  --primary-dark: #2c4a3e; /* sumska zelena: tamne kartice, naslovi sa kontrastom */
-  --surface-tint: #f0faf3; /* menta: pozadina sekcija/stranice */
-  --accent: #86efac; /* lime: glavna akcija (CTA) */
-
-  --background: #f7faf8;
-  --foreground: #14201a;
-  --card: #ffffff;
-  --muted: #5b6b62;
-  --danger: #dc2626; /* greške u formama i destruktivne akcije */
-  --heading: var(--primary-dark); /* boja naslova/labela na površinama stranice (u dark temi svetla) */
+  --surface: #f8f9ff;
+  --surface-dim: #cbdbf5;
+  --surface-bright: #f8f9ff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #eff4ff;
+  --surface-container: #e5eeff;
+  --surface-container-high: #dce9ff;
+  --surface-container-highest: #d3e4fe;
+  --surface-variant: #d3e4fe;
+  --on-surface: #0b1c30;
+  --on-surface-variant: #3d4947;
+  --inverse-surface: #213145;
+  --inverse-on-surface: #eaf1ff;
+  --outline: #6d7a77;
+  --outline-variant: #bcc9c6;
+  --surface-tint: #006a61;
+  --primary: #00685f;
+  --on-primary: #ffffff;
+  --primary-container: #008378;
+  --on-primary-container: #f4fffc;
+  --inverse-primary: #6bd8cb;
+  --secondary: #515f74;
+  --on-secondary: #ffffff;
+  --secondary-container: #d5e3fd;
+  --on-secondary-container: #57657b;
+  --tertiary: #006194;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #007bb9;
+  --on-tertiary-container: #fdfcff;
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  --primary-fixed: #89f5e7;
+  --primary-fixed-dim: #6bd8cb;
+  --on-primary-fixed: #00201d;
+  --on-primary-fixed-variant: #005049;
+  --secondary-fixed: #d5e3fd;
+  --secondary-fixed-dim: #b9c7e0;
+  --on-secondary-fixed: #0d1c2f;
+  --on-secondary-fixed-variant: #3a485c;
+  --tertiary-fixed: #cce5ff;
+  --tertiary-fixed-dim: #93ccff;
+  --on-tertiary-fixed: #001d31;
+  --on-tertiary-fixed-variant: #004b73;
+  --background: #f8f9ff;
+  --on-background: #0b1c30;
 }
 
 /* dark tema: data-theme="dark" na <html> postavlja skripta u layout.tsx (sistemska tema ili izbor korisnika) */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --primary: #22c55e;
-  --primary-dark: #1f3a2e; /* sidebar i tamne kartice ostaju tamne, ali svetlije od pozadine */
-  --surface-tint: #13201a;
-  --accent: #86efac;
-
-  --background: #0d1411;
-  --foreground: #e6efe9;
-  --card: #16211b;
-  --muted: #9aada2;
-  --danger: #f87171;
-  --heading: #bbf7d0;
+  --surface: #0b0f17;
+  --surface-dim: #080b11;
+  --surface-bright: #1e293b;
+  --surface-container-lowest: #151d2b;
+  --surface-container-low: #1a2434;
+  --surface-container: #223046;
+  --surface-container-high: #2a3a52;
+  --surface-container-highest: #334560;
+  --surface-variant: #334560;
+  --on-surface: #e2e8f0;
+  --on-surface-variant: #a3b1c2;
+  --inverse-surface: #e2e8f0;
+  --inverse-on-surface: #213145;
+  --outline: #8b9aa8;
+  --outline-variant: #3d4a5c;
+  --primary: #2bb5a8;
+  --on-primary: #00201d;
+  --primary-container: #008378;
+  --on-primary-container: #f4fffc;
+  --secondary: #b9c7e0;
+  --on-secondary: #0d1c2f;
+  --secondary-container: #334560;
+  --on-secondary-container: #d5e3fd;
+  --tertiary: #93ccff;
+  --on-tertiary: #001d31;
+  --tertiary-container: #007bb9;
+  --error: #ffb4ab;
+  --on-error: #690005;
+  --error-container: #93000a;
+  --on-error-container: #ffdad6;
+  --primary-fixed: #134e4a;
+  --primary-fixed-dim: #0f766e;
+  --on-primary-fixed: #89f5e7;
+  --secondary-fixed: #334560;
+  --on-secondary-fixed: #d5e3fd;
+  --tertiary-fixed: #123a57;
+  --tertiary-fixed-dim: #1b4f75;
+  --on-tertiary-fixed: #cce5ff;
+  --background: #0b0f17;
+  --on-background: #e2e8f0;
 }
 
+/*
+ * Stanja porudžbine (dizajn/DESIGN.md): svaki status ima par tekst/površina/ivica.
+ * StatusBadge postavlja data-status, a boje čita iz ovih promenljivih; u dark temi je pozadina 15% boje teksta.
+ */
+[data-status] {
+  --chip-fg: #374151;
+  --chip-bg: #f3f4f6;
+  --chip-border: #e5e7eb;
+}
+[data-status="primljena"] { --chip-fg: #1d4ed8; --chip-bg: #eff6ff; --chip-border: #bfdbfe; }
+[data-status="potvrdjena"] { --chip-fg: #4338ca; --chip-bg: #eef2ff; --chip-border: #c7d2fe; }
+[data-status="u_izradi"] { --chip-fg: #b45309; --chip-bg: #fef3c7; --chip-border: #fde68a; }
+[data-status="poslata"] { --chip-fg: #7e22ce; --chip-bg: #faf5ff; --chip-border: #e9d5ff; }
+[data-status="isporucena"] { --chip-fg: #15803d; --chip-bg: #f0fdf4; --chip-border: #bbf7d0; }
+[data-status="vracena_na_doradu"] { --chip-fg: #c2410c; --chip-bg: #ffedd5; --chip-border: #fed7aa; }
+[data-status="odbijena"] { --chip-fg: #be123c; --chip-bg: #ffe4e6; --chip-border: #fecdd3; }
+[data-status="otkazana"] { --chip-fg: #374151; --chip-bg: #f3f4f6; --chip-border: #e5e7eb; }
+
+:root[data-theme="dark"] [data-status] {
+  --chip-bg: color-mix(in oklab, var(--chip-fg) 15%, transparent);
+  --chip-border: color-mix(in oklab, var(--chip-fg) 30%, transparent);
+}
+:root[data-theme="dark"] [data-status="primljena"] { --chip-fg: #93c5fd; }
+:root[data-theme="dark"] [data-status="potvrdjena"] { --chip-fg: #a5b4fc; }
+:root[data-theme="dark"] [data-status="u_izradi"] { --chip-fg: #fcd34d; }
+:root[data-theme="dark"] [data-status="poslata"] { --chip-fg: #d8b4fe; }
+:root[data-theme="dark"] [data-status="isporucena"] { --chip-fg: #86efac; }
+:root[data-theme="dark"] [data-status="vracena_na_doradu"] { --chip-fg: #fdba74; }
+:root[data-theme="dark"] [data-status="odbijena"] { --chip-fg: #fda4af; }
+:root[data-theme="dark"] [data-status="otkazana"] { --chip-fg: #d1d5db; }
+
 @theme inline {
-  --color-primary: var(--primary);
-  --color-primary-dark: var(--primary-dark);
+  /* --- paleta iz dizajn/code.html */
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-variant: var(--surface-variant);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
   --color-surface-tint: var(--surface-tint);
-  --color-accent: var(--accent);
-  /* izvedene nijanse iz primarne — jedna boja u pickeru daje celu skalu */
-  --color-primary-soft: color-mix(in oklab, var(--primary) 12%, var(--card));
-  --color-heading: var(--heading);
-  --color-primary-hover: color-mix(in oklab, var(--primary) 85%, black);
-  --color-accent-hover: color-mix(in oklab, var(--accent) 85%, black);
-
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-inverse-primary: var(--inverse-primary);
+  --color-secondary: var(--secondary);
+  --color-on-secondary: var(--on-secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary-container: var(--on-secondary-container);
+  --color-tertiary: var(--tertiary);
+  --color-on-tertiary: var(--on-tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary-container: var(--on-tertiary-container);
+  --color-error: var(--error);
+  --color-on-error: var(--on-error);
+  --color-error-container: var(--error-container);
+  --color-on-error-container: var(--on-error-container);
+  --color-primary-fixed: var(--primary-fixed);
+  --color-primary-fixed-dim: var(--primary-fixed-dim);
+  --color-on-primary-fixed: var(--on-primary-fixed);
+  --color-on-primary-fixed-variant: var(--on-primary-fixed-variant);
+  --color-secondary-fixed: var(--secondary-fixed);
+  --color-secondary-fixed-dim: var(--secondary-fixed-dim);
+  --color-on-secondary-fixed: var(--on-secondary-fixed);
+  --color-on-secondary-fixed-variant: var(--on-secondary-fixed-variant);
+  --color-tertiary-fixed: var(--tertiary-fixed);
+  --color-tertiary-fixed-dim: var(--tertiary-fixed-dim);
+  --color-on-tertiary-fixed: var(--on-tertiary-fixed);
+  --color-on-tertiary-fixed-variant: var(--on-tertiary-fixed-variant);
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-muted: var(--muted);
-  --color-danger: var(--danger);
-  --radius-card: 1.5rem;
+  --color-on-background: var(--on-background);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* --- stari nazivi koje koriste ostale stranice (preslikani na istu paletu, da se ništa ne lomi dok se ne redizajniraju) */
+  --color-foreground: var(--on-surface);
+  --color-card: var(--surface-container-lowest);
+  --color-muted: var(--on-surface-variant);
+  --color-danger: var(--error);
+  --color-heading: var(--on-surface);
+  --color-line: var(--outline-variant);
+  --color-primary-dark: var(--inverse-surface);
+  --color-accent: var(--primary-fixed);
+  --color-primary-soft: color-mix(in oklab, var(--primary) 12%, var(--surface-container-lowest));
+  --color-primary-hover: color-mix(in oklab, var(--primary) 85%, black);
+  --color-accent-hover: color-mix(in oklab, var(--primary-fixed) 85%, black);
+  --radius-card: 0.75rem;
+  --shadow-card: 0 1px 8px rgba(11, 28, 48, 0.06);
+
+  /* --- tipografija iz code.html (font-<ime> bira familiju, text-<ime> veličinu + visinu reda + težinu) */
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-jakarta);
+  --font-mono: var(--font-jetbrains);
+  --font-headline-sm: var(--font-jakarta);
+  --font-headline-md: var(--font-jakarta);
+  --font-headline-lg: var(--font-jakarta);
+  --font-headline-lg-mobile: var(--font-jakarta);
+  --font-display-lg: var(--font-jakarta);
+  --font-title-md: var(--font-inter);
+  --font-title-sm: var(--font-inter);
+  --font-label-md: var(--font-inter);
+  --font-label-sm: var(--font-inter);
+  --font-body-lg: var(--font-inter);
+  --font-body-md: var(--font-inter);
+  --font-body-sm: var(--font-inter);
+  --font-data-mono: var(--font-jetbrains);
+
+  --text-display-lg: 36px;
+  --text-display-lg--line-height: 44px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 700;
+  --text-headline-lg: 30px;
+  --text-headline-lg--line-height: 38px;
+  --text-headline-lg--letter-spacing: -0.015em;
+  --text-headline-lg--font-weight: 700;
+  --text-headline-lg-mobile: 24px;
+  --text-headline-lg-mobile--line-height: 32px;
+  --text-headline-lg-mobile--letter-spacing: -0.01em;
+  --text-headline-lg-mobile--font-weight: 700;
+  --text-headline-md: 22px;
+  --text-headline-md--line-height: 28px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
+  --text-headline-sm: 18px;
+  --text-headline-sm--line-height: 24px;
+  --text-headline-sm--letter-spacing: -0.005em;
+  --text-headline-sm--font-weight: 600;
+  --text-title-md: 16px;
+  --text-title-md--line-height: 24px;
+  --text-title-md--font-weight: 600;
+  --text-title-sm: 14px;
+  --text-title-sm--line-height: 20px;
+  --text-title-sm--font-weight: 600;
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--font-weight: 400;
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-md--font-weight: 400;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 16px;
+  --text-body-sm--font-weight: 400;
+  --text-label-md: 13px;
+  --text-label-md--line-height: 18px;
+  --text-label-md--font-weight: 500;
+  --text-label-sm: 11px;
+  --text-label-sm--line-height: 14px;
+  --text-label-sm--letter-spacing: 0.02em;
+  --text-label-sm--font-weight: 600;
+  --text-data-mono: 13px;
+  --text-data-mono--line-height: 18px;
+  --text-data-mono--font-weight: 500;
+
+  /* --- razmaci iz code.html (p-space-md, gap-space-sm...) */
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-gutter-mobile: 0.75rem;
+  --spacing-margin: 2rem;
+  --spacing-margin-mobile: 1rem;
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  color: var(--on-surface);
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+/* Material Symbols (ikone): ligature se ne smeju lomiti */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* tabularni brojevi za ID-jeve, rokove i cene (dizajn/DESIGN.md → Numeric Display) */
+.tnum {
+  font-feature-settings: "tnum" 1;
 }

@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-
-import { ThemePicker } from "@/components/dev/ThemePicker";
+import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
@@ -9,15 +7,10 @@ import { Providers } from "./providers";
 
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin", "latin-ext"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// Inter: tekst i tabele; Plus Jakarta Sans: naslovi; JetBrains Mono: ID-jevi, rokovi, cene (dizajn/DESIGN.md → Typography)
+const inter = Inter({ variable: "--font-inter", subsets: ["latin", "latin-ext"] });
+const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin", "latin-ext"], weight: ["600", "700"] });
+const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin", "latin-ext"], weight: ["500", "700"] });
 
 export const metadata: Metadata = {
   title: "Digitalni zubar",
@@ -26,14 +19,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="sr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="sr" className={`${inter.variable} ${jakarta.variable} ${jetbrains.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* ikone (Material Symbols); font se učitava sa Google Fonts */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400,0,0&display=block"
+        />
       </head>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
-        {/* color picker teme postoji samo u devu, ne ide u produkcijski build */}
-        {process.env.NODE_ENV !== "production" && <ThemePicker />}
       </body>
     </html>
   );

@@ -6,9 +6,9 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const TONES = {
-  light: "bg-card text-foreground shadow-[0_2px_20px_rgba(20,32,26,0.06)]",
+  light: "bg-card text-foreground shadow-card",
   dark: "bg-primary-dark text-white",
-  primary: "bg-primary text-white",
+  primary: "bg-primary text-card",
 };
 
 export function Card({ tone = "light", className = "", ...props }: CardProps) {

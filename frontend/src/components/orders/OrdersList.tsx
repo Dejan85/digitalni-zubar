@@ -44,7 +44,7 @@ export function OrdersList(props: OrdersListProps) {
         {props.canCreate && (
           <Link
             href="/orders/new"
-            className="inline-flex h-11 items-center rounded-full bg-accent px-6 text-sm font-medium text-primary-dark transition-colors hover:bg-accent-hover"
+            className="inline-flex h-10 items-center rounded-lg bg-primary px-5 text-sm font-medium text-card transition-colors hover:bg-primary-hover"
           >
             Nova porudžbina
           </Link>
