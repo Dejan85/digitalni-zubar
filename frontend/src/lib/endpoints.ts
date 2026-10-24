@@ -4,6 +4,7 @@ import type {
   CompanyType,
   Connection,
   ConnectionStatus,
+  Impression,
   Note,
   Order,
   OrderDetail,
@@ -193,4 +194,15 @@ export function createNote(input: { orderId?: string; patientId?: string; text: 
     method: "POST",
     body: { porudzbinaId: input.orderId, pacijentId: input.patientId, tekst: input.text },
   });
+}
+
+export function uploadImpression(
+  orderId: string,
+  input: { type: "digitalni" | "analogni"; note?: string; file?: File },
+) {
+  const formData = new FormData();
+  formData.append("tip", input.type);
+  if (input.note) formData.append("napomena", input.note);
+  if (input.file) formData.append("fajl", input.file);
+  return api<{ impression: Impression }>(`/porudzbine/${orderId}/otisak`, { method: "POST", formData });
 }

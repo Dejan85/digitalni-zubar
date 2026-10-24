@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ChangeEvent, FormEventHandler, ReactNode } from "react";
+import type { ChangeEvent, ComponentProps, FormEventHandler, ReactNode } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
 
 import { Button } from "@/components/ui/Button";
@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Field, Input } from "@/components/ui/Field";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { StatusTone } from "@/lib/order-status";
+
+import { ImpressionUpload } from "./ImpressionUpload";
 
 export interface OrderItemRow {
   id: string;
@@ -47,6 +49,7 @@ interface OrderDetailProps {
   items: OrderItemRow[];
   total: string;
   impressions: ImpressionRow[];
+  impressionUpload: ComponentProps<typeof ImpressionUpload>;
   notes: OrderNoteRow[];
   noteField: UseFormRegisterReturn;
   noteError?: string;
@@ -167,6 +170,7 @@ export function OrderDetail(props: OrderDetailProps) {
 
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-heading">Otisci</h2>
+        <ImpressionUpload {...props.impressionUpload} />
         {props.impressions.length === 0 ? (
           <EmptyState title="Nema otisaka" />
         ) : (

@@ -9,8 +9,9 @@ import { z } from "zod";
 
 import { OrderDetail, type StatusAction } from "@/components/orders/OrderDetail";
 import { useAuth } from "@/lib/auth";
-import { createNote, getOrder, listNotes, listServices, updateOrderStatus } from "@/lib/endpoints";
+import { createNote, getOrder, listNotes, listServices, updateOrderStatus, uploadImpression } from "@/lib/endpoints";
 import { formatDate, formatPrice } from "@/lib/format";
+import { formatFileSize, validateImpressionFile } from "@/lib/impressions";
 import {
   allowedTransitions,
   ORDER_STATUS_ACTIONS,
@@ -31,6 +32,11 @@ export function OrderDetailContainer() {
   const queryClient = useQueryClient();
   const [deadline, setDeadline] = useState("");
   const [deadlineError, setDeadlineError] = useState<string>();
+
+  const [impressionType, setImpressionType] = useState<"digitalni" | "analogni">("digitalni");
+  const [impressionFile, setImpressionFile] = useState<File | null>(null);
+  const [impressionNote, setImpressionNote] = useState("");
+  const [impressionError, setImpressionError] = useState<string>();
 
   const orderQuery = useQuery({ queryKey: ["orders", id], queryFn: () => getOrder(id) });
   const order = orderQuery.data?.order;
@@ -55,6 +61,45 @@ export function OrderDetailContainer() {
       reset();
     },
   });
+
+  const addImpression = useMutation({
+    mutationFn: () =>
+      uploadImpression(id, {
+        type: impressionType,
+        note: impressionNote.trim() || undefined,
+        file: impressionType === "digitalni" ? (impressionFile ?? undefined) : undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setImpressionFile(null);
+      setImpressionNote("");
+      setImpressionError(undefined);
+    },
+  });
+
+  const handleImpressionFile = (file: File | null) => {
+    setImpressionFile(file);
+    setImpressionError(file ? validateImpressionFile(file) : undefined);
+  };
+
+  const handleImpressionSubmit = () => {
+    if (impressionType === "digitalni" && !impressionFile) {
+      setImpressionError("Izaberi fajl za digitalni otisak");
+      return;
+    }
+    if (impressionType === "analogni" && !impressionNote.trim()) {
+      setImpressionError("Napomena je obavezna za analogni otisak");
+      return;
+    }
+    const fileError =
+      impressionType === "digitalni" && impressionFile ? validateImpressionFile(impressionFile) : undefined;
+    if (fileError) {
+      setImpressionError(fileError);
+      return;
+    }
+    setImpressionError(undefined);
+    addImpression.mutate();
+  };
 
   const changeStatus = useMutation({
     mutationFn: (status: OrderStatus) => updateOrderStatus(id, status, status === "potvrdjena" ? deadline : undefined),
@@ -115,6 +160,23 @@ export function OrderDetailContainer() {
         typeLabel: i.type === "digitalni" ? "Digitalni otisak" : "Analogni otisak",
         detail: [i.filePath?.split(/[\\/]/).pop(), i.note].filter(Boolean).join(" — ") || "—",
       }))}
+      impressionUpload={{
+        type: impressionType,
+        onTypeChange: (type) => {
+          setImpressionType(type);
+          setImpressionError(undefined);
+        },
+        file: impressionFile && { name: impressionFile.name, size: formatFileSize(impressionFile.size) },
+        onFileSelect: handleImpressionFile,
+        note: impressionNote,
+        onNoteChange: setImpressionNote,
+        error: impressionError ?? addImpression.error?.message,
+        isUploading: addImpression.isPending,
+        onSubmit: (event) => {
+          event.preventDefault();
+          handleImpressionSubmit();
+        },
+      }}
       notes={(notesQuery.data?.notes ?? []).map((n) => ({
         id: n.id,
         text: n.text,
