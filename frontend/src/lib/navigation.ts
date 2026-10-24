@@ -20,6 +20,7 @@ const DOCTOR_NAV: NavItem[] = [
   { href: "/orders", label: "Porudžbine", icon: "inventory_2" },
   { href: "/patients", label: "Pacijenti", icon: "groups", badge: { text: "Dr", tone: "muted" } },
   { href: "/services", label: "Usluge", icon: "medical_services", badge: { text: "Lab", tone: "mutedHigh" } },
+  { href: "/finance", label: "Finansije", icon: "account_balance_wallet", badge: { text: "RSD", tone: "muted" } },
   { href: "/connections", label: "Veze", icon: "hub" },
   { href: "/profile", label: "Profil", icon: "settings" },
 ];
