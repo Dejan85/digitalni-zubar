@@ -10,6 +10,7 @@ import { PatientForm } from "@/components/patients/PatientForm";
 import { ApiError } from "@/lib/api";
 import { createPatient, updatePatient } from "@/lib/endpoints";
 import { toDateInput } from "@/lib/format";
+import { MOCK_NEW_PATIENT, mockPatientExtras } from "@/lib/orders-mock";
 import type { Patient } from "@/lib/types";
 
 const patientSchema = z.object({
@@ -22,10 +23,11 @@ type PatientValues = z.infer<typeof patientSchema>;
 
 interface PatientFormContainerProps {
   patient?: Patient; // bez njega = kreiranje
+  doctorName?: string;
   onDone: () => void;
 }
 
-export function PatientFormContainer({ patient, onDone }: PatientFormContainerProps) {
+export function PatientFormContainer({ patient, doctorName, onDone }: PatientFormContainerProps) {
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -66,7 +68,9 @@ export function PatientFormContainer({ patient, onDone }: PatientFormContainerPr
       errors={errors}
       formError={formError}
       isSubmitting={isSubmitting}
-      submitLabel={patient ? "Sačuvaj" : "Dodaj pacijenta"}
+      submitLabel="Sačuvaj pacijenta"
+      doctorName={doctorName}
+      mockRecordNumber={patient ? mockPatientExtras(patient).recordNumber : MOCK_NEW_PATIENT.recordNumber}
       onSubmit={handleSubmit(onSubmit)}
       onCancel={onDone}
     />

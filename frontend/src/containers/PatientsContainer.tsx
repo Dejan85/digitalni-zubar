@@ -1,66 +1,131 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { DeletePatientDialog } from "@/components/patients/DeletePatientDialog";
-import { PatientsList, type PatientRow } from "@/components/patients/PatientsList";
-import { Modal } from "@/components/ui/Modal";
-import { deletePatient, listPatients } from "@/lib/endpoints";
-import { formatDate } from "@/lib/format";
-import { useDebouncedValue } from "@/lib/hooks";
+import { PatientDrawer } from "@/components/patients/PatientDrawer";
+import { PatientsList } from "@/components/patients/PatientsList";
+import { useAuth } from "@/lib/auth";
+import { deletePatient, getMyCompany, listOrders, listPatients } from "@/lib/endpoints";
+import {
+  buildPatientsList,
+  EMPTY_PATIENT_FILTERS,
+  hasActivePatientFilters,
+  patientsToCsv,
+  type PatientsFilters,
+} from "@/lib/patients-list";
 import type { Patient } from "@/lib/types";
 
 import { PatientFormContainer } from "./PatientFormContainer";
 
+const FETCH_LIMIT = 100; // maksimum koji backend vraća po stranici; nalozi pacijenata se računaju nad ovim uzorkom
+const PAGE_SIZE = 10;
+
+function downloadCsv(content: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `pacijenti-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function PatientsContainer() {
+  const { session } = useAuth();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search.trim());
-  // "new" = kreiranje, Patient = izmena, null = modal zatvoren
+  const [filters, setFilters] = useState<PatientsFilters>(EMPTY_PATIENT_FILTERS);
+  const [page, setPage] = useState(1);
+  // "new" = kreiranje, Patient = izmena, null = drawer zatvoren
   const [formTarget, setFormTarget] = useState<Patient | "new" | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Patient | null>(null);
 
-  const { data, isPending, error } = useQuery({
-    queryKey: ["patients", { q: debouncedSearch }],
-    queryFn: () => listPatients(debouncedSearch || undefined),
+  const patientsQuery = useQuery({ queryKey: ["patients", { q: "" }], queryFn: () => listPatients() });
+  // isti query ključ kao kontrolna tabla, lista porudžbina i shell — jedan zahtev za sve
+  const ordersQuery = useQuery({
+    queryKey: ["orders", "dashboard"],
+    queryFn: () => listOrders({ pageSize: FETCH_LIMIT }),
+    enabled: !!session,
   });
+  const companyQuery = useQuery({ queryKey: ["company", "me"], queryFn: getMyCompany, enabled: !!session });
 
   const removal = useMutation({
     mutationFn: (id: string) => deletePatient(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["patients"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
       setDeleteTarget(null);
     },
   });
 
-  const patients = data?.patients ?? [];
-  const rows: PatientRow[] = patients.map((p) => ({
-    id: p.id,
-    fullName: `${p.firstName} ${p.lastName}`,
-    birthDate: formatDate(p.birthDate),
-    genderLabel: p.gender === "M" ? "Muški" : "Ženski",
-  }));
+  const patients = useMemo(() => patientsQuery.data?.patients ?? [], [patientsQuery.data]);
+  const orders = ordersQuery.data?.orders ?? [];
+  const list = useMemo(
+    () => buildPatientsList(patients, ordersQuery.data?.orders ?? [], filters),
+    [patients, ordersQuery.data, filters],
+  );
+
+  const totalRows = list.rows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
   const findPatient = (id: string) => patients.find((p) => p.id === id) ?? null;
+
+  // svaka promena filtera vraća na prvu stranu
+  const updateFilters = (patch: Partial<PatientsFilters>) => {
+    setFilters((current) => ({ ...current, ...patch }));
+    setPage(1);
+  };
+
+  const closeForm = () => setFormTarget(null);
 
   return (
     <PatientsList
-      rows={rows}
-      search={search}
-      onSearchChange={setSearch}
+      rows={list.rows.slice(start, start + PAGE_SIZE)}
+      kpis={list.kpis}
+      search={filters.search}
+      onSearchChange={(search) => updateFilters({ search })}
+      gender={filters.gender}
+      onGenderChange={(gender) => updateFilters({ gender })}
+      prosthetics={filters.prosthetics}
+      onProstheticsChange={(prosthetics) => updateFilters({ prosthetics })}
+      ageGroup={filters.ageGroup}
+      onAgeGroupChange={(ageGroup) => updateFilters({ ageGroup })}
+      hasFilters={hasActivePatientFilters(filters)}
+      onResetFilters={() => updateFilters(EMPTY_PATIENT_FILTERS)}
+      onExportCsv={() => downloadCsv(patientsToCsv(list.rows))}
       onCreate={() => setFormTarget("new")}
       onEdit={(id) => setFormTarget(findPatient(id))}
       onDelete={(id) => {
         removal.reset();
         setDeleteTarget(findPatient(id));
       }}
-      isLoading={isPending}
-      errorMessage={error?.message}
+      newOrderHref={(patientId) => `/orders/new?patientId=${patientId}`}
+      isPartial={orders.length >= FETCH_LIMIT}
+      totalRows={totalRows}
+      rangeFrom={totalRows === 0 ? 0 : start + 1}
+      rangeTo={Math.min(start + PAGE_SIZE, totalRows)}
+      page={currentPage}
+      totalPages={totalPages}
+      onPageChange={setPage}
+      isLoading={patientsQuery.isPending}
+      errorMessage={patientsQuery.error?.message}
     >
       {formTarget && (
-        <Modal title={formTarget === "new" ? "Novi pacijent" : "Izmena pacijenta"} onClose={() => setFormTarget(null)}>
-          <PatientFormContainer patient={formTarget === "new" ? undefined : formTarget} onDone={() => setFormTarget(null)} />
-        </Modal>
+        <PatientDrawer
+          title={formTarget === "new" ? "Dodaj novog pacijenta" : "Izmena pacijenta"}
+          subtitle={
+            formTarget === "new" ? "Otvaranje novog stomatološkog kartona ordinacije" : "Izmena podataka stomatološkog kartona"
+          }
+          icon={formTarget === "new" ? "person_add" : "edit"}
+          onClose={closeForm}
+        >
+          <PatientFormContainer
+            patient={formTarget === "new" ? undefined : formTarget}
+            doctorName={companyQuery.data?.company.name}
+            onDone={closeForm}
+          />
+        </PatientDrawer>
       )}
       {deleteTarget && (
         <DeletePatientDialog

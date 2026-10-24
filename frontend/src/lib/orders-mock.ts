@@ -191,3 +191,51 @@ export const MOCK_SPEC_OPTIONS = {
 };
 
 export const MOCK_LAB_LEAD_TIME = "Standardni rok izrade: 3-5 radnih dana";
+
+// ⚠ MOCK — ekran "Pacijenti i medicinski kartoni" (dizajn/pacijenti i medicinski kartoni).
+// Pacijent u backendu ima samo ime, prezime, datum rođenja i pol: broj kartona, JMBG, telefon, e-mail i medicinske
+// napomene ne postoje. Računaju se deterministički iz ID-a pacijenta. Spisak: documentation/REDIZAJN_MOCK.md §5.
+export interface MockPatientExtras {
+  recordNumber: string; // npr. "#JP-882"
+  jmbg: string;
+  phone: string; // prikaz, npr. "+381 64 123 4567"
+  phoneHref: string; // npr. "tel:+381641234567"
+  email: string;
+}
+
+const EMAIL_DOMAINS = ["email.rs", "gmail.com", "mts.rs", "yahoo.com", "eunet.rs", "outlook.com"];
+// mala slova latinice bez dijakritika za e-mail adresu
+const asciiOf = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/đ/g, "dj")
+    .replace(/[čć]/g, "c")
+    .replace(/š/g, "s")
+    .replace(/ž/g, "z")
+    .replace(/[^a-z]/g, "");
+
+export function mockPatientExtras(patient: {
+  id: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+}): MockPatientExtras {
+  const h = hash(`patient-${patient.id}`);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const born = new Date(patient.birthDate);
+  const digits = String(hash(`jmbg-${patient.id}`)).padStart(10, "0").slice(0, 5);
+  const operator = [60, 61, 62, 63, 64, 65, 69][h % 7];
+  const part1 = 100 + ((h >>> 4) % 900);
+  const part2 = 1000 + ((h >>> 12) % 9000);
+  const initials = `${patient.firstName[0] ?? "X"}${patient.lastName[0] ?? "X"}`.toUpperCase();
+  return {
+    recordNumber: `#${initials}-${100 + (h % 900)}`,
+    jmbg: `${pad(born.getDate())}${pad(born.getMonth() + 1)}${String(born.getFullYear()).slice(1)}71${digits}`,
+    phone: `+381 ${operator} ${part1} ${part2}`,
+    phoneHref: `tel:+381${operator}${part1}${part2}`,
+    email: `${asciiOf(patient.firstName)[0] ?? "x"}.${asciiOf(patient.lastName)}@${EMAIL_DOMAINS[(h >>> 8) % EMAIL_DOMAINS.length]}`,
+  };
+}
+
+// polja forme novog pacijenta (drawer) koja backend nema — prikazuju se onemogućena
+export const MOCK_NEW_PATIENT = { recordNumber: "#MK-902" };
