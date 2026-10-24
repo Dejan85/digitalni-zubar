@@ -2,102 +2,103 @@
 
 /*
  * Tokeni teme — jedino mesto gde su "sirove" boje. Komponente koriste samo tokene (bg-primary, text-on-surface...).
- * Redizajn (grana `redizajn`): paleta, tipografija i razmaci su 1:1 iz tailwind.config u dizajn/code.html
+ * Redizajn (grana `redizajn`): imena tokena, tipografija i razmaci su 1:1 iz tailwind.config u dizajn/code.html
  * (Material-stil imena: surface-container-low, on-surface-variant, primary-container...), pa se markup iz
- * code.html prenosi bez menjanja klasa. Dark vrednosti su naše (mock ima samo svetlu temu).
+ * code.html prenosi bez menjanja klasa. VREDNOSTI boja su paleta "Glacial Frost Dental" (od 2026-10-24):
+ * primary #0284C7, secondary #06B6D4, tertiary #0F172A, neutral #F0F9FF — ostalo je izvedeno (documentation/ARHITEKTURA.md §9).
  */
 :root {
-  --surface: #f8f9ff;
-  --surface-dim: #cbdbf5;
-  --surface-bright: #f8f9ff;
+  --surface: #f0f9ff;
+  --surface-dim: #c3d9e8;
+  --surface-bright: #f0f9ff;
   --surface-container-lowest: #ffffff;
-  --surface-container-low: #eff4ff;
-  --surface-container: #e5eeff;
-  --surface-container-high: #dce9ff;
-  --surface-container-highest: #d3e4fe;
-  --surface-variant: #d3e4fe;
-  --on-surface: #0b1c30;
-  --on-surface-variant: #3d4947;
-  --inverse-surface: #213145;
-  --inverse-on-surface: #eaf1ff;
-  --outline: #6d7a77;
-  --outline-variant: #bcc9c6;
-  --surface-tint: #006a61;
-  --primary: #00685f;
+  --surface-container-low: #e6f3fc;
+  --surface-container: #dcedf8;
+  --surface-container-high: #d2e6f3;
+  --surface-container-highest: #c8dfee;
+  --surface-variant: #d2e6f3;
+  --on-surface: #0f172a;
+  --on-surface-variant: #475569;
+  --inverse-surface: #0f172a;
+  --inverse-on-surface: #f0f9ff;
+  --outline: #64748b;
+  --outline-variant: #bcd0de;
+  --surface-tint: #0284c7;
+  --primary: #0284c7;
   --on-primary: #ffffff;
-  --primary-container: #008378;
-  --on-primary-container: #f4fffc;
-  --inverse-primary: #6bd8cb;
-  --secondary: #515f74;
-  --on-secondary: #ffffff;
-  --secondary-container: #d5e3fd;
-  --on-secondary-container: #57657b;
-  --tertiary: #006194;
+  --primary-container: #0369a1;
+  --on-primary-container: #f0f9ff;
+  --inverse-primary: #7dd3fc;
+  --secondary: #06b6d4;
+  --on-secondary: #083344;
+  --secondary-container: #cffafe;
+  --on-secondary-container: #164e63;
+  --tertiary: #0f172a;
   --on-tertiary: #ffffff;
-  --tertiary-container: #007bb9;
-  --on-tertiary-container: #fdfcff;
+  --tertiary-container: #1e293b;
+  --on-tertiary-container: #e2e8f0;
   --error: #ba1a1a;
   --on-error: #ffffff;
   --error-container: #ffdad6;
   --on-error-container: #93000a;
-  --primary-fixed: #89f5e7;
-  --primary-fixed-dim: #6bd8cb;
-  --on-primary-fixed: #00201d;
-  --on-primary-fixed-variant: #005049;
-  --secondary-fixed: #d5e3fd;
-  --secondary-fixed-dim: #b9c7e0;
-  --on-secondary-fixed: #0d1c2f;
-  --on-secondary-fixed-variant: #3a485c;
-  --tertiary-fixed: #cce5ff;
-  --tertiary-fixed-dim: #93ccff;
-  --on-tertiary-fixed: #001d31;
-  --on-tertiary-fixed-variant: #004b73;
-  --background: #f8f9ff;
-  --on-background: #0b1c30;
+  --primary-fixed: #e0f2fe;
+  --primary-fixed-dim: #bae6fd;
+  --on-primary-fixed: #082f49;
+  --on-primary-fixed-variant: #075985;
+  --secondary-fixed: #cffafe;
+  --secondary-fixed-dim: #67e8f9;
+  --on-secondary-fixed: #083344;
+  --on-secondary-fixed-variant: #155e75;
+  --tertiary-fixed: #e2e8f0;
+  --tertiary-fixed-dim: #cbd5e1;
+  --on-tertiary-fixed: #0f172a;
+  --on-tertiary-fixed-variant: #334155;
+  --background: #f0f9ff;
+  --on-background: #0f172a;
 }
 
 /* dark tema: data-theme="dark" na <html> postavlja skripta u layout.tsx (sistemska tema ili izbor korisnika) */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --surface: #0b0f17;
-  --surface-dim: #080b11;
+  --surface: #0b1220;
+  --surface-dim: #070c16;
   --surface-bright: #1e293b;
-  --surface-container-lowest: #151d2b;
-  --surface-container-low: #1a2434;
-  --surface-container: #223046;
-  --surface-container-high: #2a3a52;
-  --surface-container-highest: #334560;
-  --surface-variant: #334560;
+  --surface-container-lowest: #111a2b;
+  --surface-container-low: #162136;
+  --surface-container: #1d2a42;
+  --surface-container-high: #25344f;
+  --surface-container-highest: #2f405d;
+  --surface-variant: #2f405d;
   --on-surface: #e2e8f0;
   --on-surface-variant: #a3b1c2;
   --inverse-surface: #e2e8f0;
-  --inverse-on-surface: #213145;
+  --inverse-on-surface: #0f172a;
   --outline: #8b9aa8;
-  --outline-variant: #3d4a5c;
-  --primary: #2bb5a8;
-  --on-primary: #00201d;
-  --primary-container: #008378;
-  --on-primary-container: #f4fffc;
-  --secondary: #b9c7e0;
-  --on-secondary: #0d1c2f;
-  --secondary-container: #334560;
-  --on-secondary-container: #d5e3fd;
-  --tertiary: #93ccff;
-  --on-tertiary: #001d31;
-  --tertiary-container: #007bb9;
+  --outline-variant: #334155;
+  --primary: #38bdf8;
+  --on-primary: #082f49;
+  --primary-container: #0369a1;
+  --on-primary-container: #f0f9ff;
+  --secondary: #22d3ee;
+  --on-secondary: #083344;
+  --secondary-container: #155e75;
+  --on-secondary-container: #cffafe;
+  --tertiary: #cbd5e1;
+  --on-tertiary: #0f172a;
+  --tertiary-container: #334155;
   --error: #ffb4ab;
   --on-error: #690005;
   --error-container: #93000a;
   --on-error-container: #ffdad6;
-  --primary-fixed: #134e4a;
-  --primary-fixed-dim: #0f766e;
-  --on-primary-fixed: #89f5e7;
-  --secondary-fixed: #334560;
-  --on-secondary-fixed: #d5e3fd;
-  --tertiary-fixed: #123a57;
-  --tertiary-fixed-dim: #1b4f75;
-  --on-tertiary-fixed: #cce5ff;
-  --background: #0b0f17;
+  --primary-fixed: #0c4a6e;
+  --primary-fixed-dim: #075985;
+  --on-primary-fixed: #bae6fd;
+  --secondary-fixed: #155e75;
+  --on-secondary-fixed: #cffafe;
+  --tertiary-fixed: #1e293b;
+  --tertiary-fixed-dim: #334155;
+  --on-tertiary-fixed: #e2e8f0;
+  --background: #0b1220;
   --on-background: #e2e8f0;
 }
 
@@ -195,7 +196,7 @@
   --color-primary-hover: color-mix(in oklab, var(--primary) 85%, black);
   --color-accent-hover: color-mix(in oklab, var(--primary-fixed) 85%, black);
   --radius-card: 0.75rem;
-  --shadow-card: 0 1px 8px rgba(11, 28, 48, 0.06);
+  --shadow-card: 0 1px 8px rgba(15, 23, 42, 0.06);
 
   /* --- tipografija iz code.html (font-<ime> bira familiju, text-<ime> veličinu + visinu reda + težinu) */
   --font-sans: var(--font-inter);
