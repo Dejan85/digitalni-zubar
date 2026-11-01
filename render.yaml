@@ -1,0 +1,52 @@
+# Render Blueprint — demo deploy (backend + frontend + Postgres)
+# Vrednosti sa `sync: false` se unose u Render dashboardu pri kreiranju Blueprint-a.
+databases:
+  - name: digitalni-zubar-db
+    databaseName: digitalni_zubar
+    plan: free
+    region: frankfurt
+
+services:
+  - type: web
+    name: digitalni-zubar-api
+    runtime: node
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    # devDependencies su potrebni za tsc, node-pg-migrate i tsx
+    buildCommand: npm install --include=dev && npm run build
+    # migracije su idempotentne; pre-deploy command nije dostupan na free planu
+    startCommand: npm run migrate && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: DATABASE_URL
+        fromDatabase:
+          name: digitalni-zubar-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1h
+      - key: NODE_ENV
+        value: production
+      # URL frontend servisa, npr. https://digitalni-zubar-web.onrender.com (bez kose crte na kraju)
+      - key: FRONTEND_ORIGIN
+        sync: false
+
+  - type: web
+    name: digitalni-zubar-web
+    runtime: node
+    region: frankfurt
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install --include=dev && npm run build
+    # Render zadaje PORT; `npm start` u projektu ima fiksan -p 3001
+    startCommand: npx next start -p $PORT
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      # URL backend servisa, npr. https://digitalni-zubar-api.onrender.com; ulazi u build, pa posle promene treba redeploy
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
